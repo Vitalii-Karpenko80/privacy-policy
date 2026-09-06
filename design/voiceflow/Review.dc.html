@@ -1,0 +1,99 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <style>
+    *{box-sizing:border-box}
+    body{margin:0}
+    .screen{width:390px;height:844px;position:relative;overflow:hidden;background:#F4F3F0;color:#17171C;
+      font-family:-apple-system,"SF Pro Text",system-ui,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased;
+      display:flex;flex-direction:column}
+    .card{background:#fff;border:1px solid #EFEEEA;border-radius:20px;padding:15px 16px;
+      box-shadow:0 1px 2px rgba(20,20,32,.05),0 10px 24px rgba(20,20,32,.045)}
+    .chip{width:36px;height:36px;border-radius:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+    .kind{font-size:11px;font-weight:700;letter-spacing:.12em}
+    .inc{width:24px;height:24px;border-radius:50%;background:#5B54E6;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+    .meta{display:inline-flex;align-items:center;gap:6px;font-size:13.5px;color:#6E6E76}
+    a{color:#5B54E6}a:hover{color:#463FCC}
+  </style>
+</helmet>
+<div class="screen">
+  <div style="height:54px"></div>
+
+  <!-- nav -->
+  <div style="padding:0 18px;display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3A3A42" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>
+    <div style="font-size:17px;font-weight:600">Я понял так</div>
+    <div style="font-size:15px;color:#5B54E6;font-weight:600">Заново</div>
+  </div>
+
+  <!-- transcript context -->
+  <div style="padding:0 20px;margin-bottom:16px">
+    <div style="font-size:13.5px;color:#9A9AA1;line-height:1.4">«В пятницу в 14:00 встреча с Сергеем по вентиляции, напомни за час…»</div>
+  </div>
+
+  <!-- cards -->
+  <div style="padding:0 20px;display:flex;flex-direction:column;gap:12px;overflow:hidden">
+
+    <!-- Event -->
+    <div class="card">
+      <div style="display:flex;align-items:center;gap:12px">
+        <div class="chip" style="background:#E7EEFF;color:#2F6BFF">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15" rx="3.5"/><path d="M3.5 9.5h17"/><path d="M8 3v3"/><path d="M16 3v3"/></svg>
+        </div>
+        <div style="flex:1;min-width:0">
+          <div class="kind" style="color:#2F6BFF">СОБЫТИЕ</div>
+          <div style="font-size:17px;font-weight:600;margin-top:2px">Встреча с Сергеем</div>
+        </div>
+        <div class="inc"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4 4 10-10"/></svg></div>
+      </div>
+      <div style="display:flex;gap:16px;margin-top:12px;flex-wrap:wrap">
+        <span class="meta"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9A9AA1" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>Пятница · 14:00</span>
+        <span class="meta"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9A9AA1" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 8-3 8h18s-3-1-3-8z"/><path d="M10.5 21a2 2 0 0 0 3 0"/></svg>За 1 час</span>
+      </div>
+      <div style="margin-top:10px;font-size:14px;color:#6E6E76;background:#F6F5F2;border-radius:11px;padding:9px 12px">📝 Обсудить вентиляцию</div>
+    </div>
+
+    <!-- Task -->
+    <div class="card">
+      <div style="display:flex;align-items:center;gap:12px">
+        <div class="chip" style="background:#E1F4EC;color:#12A574">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M8.4 12.2l2.4 2.4 4.6-5.2"/></svg>
+        </div>
+        <div style="flex:1;min-width:0">
+          <div class="kind" style="color:#12A574">ЗАДАЧА</div>
+          <div style="font-size:16px;font-weight:600;margin-top:2px">Проверить коммерческое предложение</div>
+          <div style="font-size:13.5px;color:#9A9AA1;margin-top:3px">Срок: до встречи</div>
+        </div>
+        <div class="inc"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4 4 10-10"/></svg></div>
+      </div>
+    </div>
+
+    <!-- Contact -->
+    <div class="card">
+      <div style="display:flex;align-items:center;gap:12px">
+        <div style="width:36px;height:36px;border-radius:50%;background:#F2E8FB;color:#9B4DDB;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;flex-shrink:0">СИ</div>
+        <div style="flex:1;min-width:0">
+          <div class="kind" style="color:#9B4DDB">КОНТАКТ</div>
+          <div style="font-size:16px;font-weight:600;margin-top:2px">Сергей Иванов</div>
+          <div style="font-size:13.5px;color:#12A574;margin-top:2px">✓ Найден в контактах</div>
+        </div>
+        <div class="inc"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4 4 10-10"/></svg></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CTA -->
+  <div style="margin-top:auto;padding:14px 20px 30px;background:linear-gradient(180deg,rgba(244,243,240,0),#F4F3F0 34%)">
+    <div style="background:#5B54E6;border-radius:16px;padding:16px;text-align:center;font-size:17px;font-weight:600;color:#fff;box-shadow:0 12px 26px rgba(91,84,230,.34)">Добавить всё</div>
+    <div style="text-align:center;font-size:14px;color:#9A9AA1;margin-top:12px">Коснитесь карточки, чтобы изменить</div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

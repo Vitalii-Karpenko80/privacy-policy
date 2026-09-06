@@ -1,0 +1,85 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <style>
+    *{box-sizing:border-box}
+    body{margin:0}
+    .screen{width:390px;height:844px;position:relative;overflow:hidden;background:#F4F3F0;color:#17171C;
+      font-family:-apple-system,"SF Pro Text",system-ui,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased;
+      display:flex;flex-direction:column}
+    .card{background:#fff;border:1px solid #EFEEEA;border-radius:20px;padding:15px 16px;
+      box-shadow:0 1px 2px rgba(20,20,32,.05),0 10px 24px rgba(20,20,32,.045)}
+    .tag{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;font-weight:600;padding:4px 9px;border-radius:8px}
+    .day{font-size:13px;font-weight:700;letter-spacing:.04em;color:#9A9AA1;margin:0 4px 10px}
+    a{color:#5B54E6}a:hover{color:#463FCC}
+  </style>
+</helmet>
+<div class="screen">
+  <div style="height:54px"></div>
+
+  <!-- header -->
+  <div style="padding:0 20px;margin-bottom:14px">
+    <div style="font-size:26px;font-weight:700;letter-spacing:-.02em">История</div>
+  </div>
+
+  <!-- NL search -->
+  <div style="padding:0 20px;margin-bottom:22px">
+    <div style="display:flex;align-items:center;gap:10px;background:#EAE9E5;border-radius:13px;padding:11px 14px">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#8B8B93" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
+      <div style="font-size:15px;color:#9A9AA1">Что я обсуждал с Сергеем?</div>
+    </div>
+  </div>
+
+  <!-- Today -->
+  <div style="padding:0 20px">
+    <div class="day">СЕГОДНЯ</div>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;gap:10px">
+          <div style="font-size:15px;color:#3A3A42;line-height:1.4;flex:1">«В пятницу в 14:00 встреча с Сергеем по вентиляции…»</div>
+          <div style="font-size:12.5px;color:#B4B4BB;flex-shrink:0">09:42</div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+          <span class="tag" style="background:#E7EEFF;color:#2F6BFF">📅 1 событие</span>
+          <span class="tag" style="background:#E1F4EC;color:#12A574">✓ 1 задача</span>
+          <span class="tag" style="background:#F2E8FB;color:#9B4DDB">👤 Сергей</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;gap:10px">
+          <div style="font-size:15px;color:#3A3A42;line-height:1.4;flex:1">«Надо заказать двери для здания 7 и записать размеры проёмов…»</div>
+          <div style="font-size:12.5px;color:#B4B4BB;flex-shrink:0">08:17</div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+          <span class="tag" style="background:#E1F4EC;color:#12A574">✓ 1 задача</span>
+          <span class="tag" style="background:#FBEEDA;color:#E0912B">📝 1 заметка</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Yesterday -->
+  <div style="padding:22px 20px 0">
+    <div class="day">ВЧЕРА</div>
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;gap:10px">
+        <div style="font-size:15px;color:#3A3A42;line-height:1.4;flex:1">«Завтра в 9 напомни позвонить Андрею по крепежу.»</div>
+        <div style="font-size:12.5px;color:#B4B4BB;flex-shrink:0">18:05</div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+        <span class="tag" style="background:#E1F4EC;color:#12A574">✓ 1 задача</span>
+        <span class="tag" style="background:#F2E8FB;color:#9B4DDB">👤 Андрей</span>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

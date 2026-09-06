@@ -1,0 +1,77 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <style>
+    *{box-sizing:border-box}
+    body{margin:0}
+    .screen{width:390px;height:844px;position:relative;overflow:hidden;background:#F4F3F0;color:#17171C;
+      font-family:-apple-system,"SF Pro Text",system-ui,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased;
+      display:flex;flex-direction:column}
+    .card{background:#fff;border:1px solid #EFEEEA;border-radius:20px;
+      box-shadow:0 1px 2px rgba(20,20,32,.05),0 10px 24px rgba(20,20,32,.045)}
+    .drow{display:flex;align-items:center;gap:13px;padding:14px 16px}
+    .chip{width:34px;height:34px;border-radius:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+    .hair{height:1px;background:#F0EFEB;margin:0 16px}
+    .ok{color:#12A574;flex-shrink:0}
+    a{color:#5B54E6}a:hover{color:#463FCC}
+  </style>
+</helmet>
+<div class="screen">
+  <div style="height:96px"></div>
+
+  <!-- check -->
+  <div style="display:flex;flex-direction:column;align-items:center;padding:0 24px">
+    <div style="position:relative;width:112px;height:112px;display:flex;align-items:center;justify-content:center;margin-bottom:22px">
+      <div style="position:absolute;inset:0;border-radius:50%;background:#E1F4EC"></div>
+      <div style="position:relative;width:84px;height:84px;border-radius:50%;background:linear-gradient(155deg,#16B67F,#0E9C6B);display:flex;align-items:center;justify-content:center;box-shadow:0 12px 26px rgba(18,165,116,.34)">
+        <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.2 4.2L19 7"/></svg>
+      </div>
+    </div>
+    <div style="font-size:27px;font-weight:700;letter-spacing:-.02em">Готово</div>
+    <div style="font-size:15px;color:#8B8B93;margin-top:6px;text-align:center">Всё разложено по местам</div>
+  </div>
+
+  <!-- summary -->
+  <div style="padding:28px 20px 0">
+    <div class="card">
+      <div class="drow">
+        <div class="chip" style="background:#E7EEFF;color:#2F6BFF"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15" rx="3.5"/><path d="M3.5 9.5h17"/><path d="M8 3v3"/><path d="M16 3v3"/></svg></div>
+        <div style="flex:1;min-width:0"><div style="font-size:15.5px;font-weight:600">Событие в Календаре</div><div style="font-size:13px;color:#9A9AA1">Встреча с Сергеем · пт 14:00</div></div>
+        <svg class="ok" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4 4 10-10"/></svg>
+      </div>
+      <div class="hair"></div>
+      <div class="drow">
+        <div class="chip" style="background:#FBEEDA;color:#E0912B"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 8-3 8h18s-3-1-3-8z"/><path d="M10.5 21a2 2 0 0 0 3 0"/></svg></div>
+        <div style="flex:1;min-width:0"><div style="font-size:15.5px;font-weight:600">Напоминание</div><div style="font-size:13px;color:#9A9AA1">За 1 час до встречи</div></div>
+        <svg class="ok" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4 4 10-10"/></svg>
+      </div>
+      <div class="hair"></div>
+      <div class="drow">
+        <div class="chip" style="background:#E1F4EC;color:#12A574"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M8.4 12.2l2.4 2.4 4.6-5.2"/></svg></div>
+        <div style="flex:1;min-width:0"><div style="font-size:15.5px;font-weight:600">Задача в Напоминаниях</div><div style="font-size:13px;color:#9A9AA1">Проверить КП · до встречи</div></div>
+        <svg class="ok" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4 4 10-10"/></svg>
+      </div>
+      <div class="hair"></div>
+      <div class="drow">
+        <div class="chip" style="background:#F2E8FB;color:#9B4DDB"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.6"/><path d="M5.5 20a6.5 6.5 0 0 1 13 0"/></svg></div>
+        <div style="flex:1;min-width:0"><div style="font-size:15.5px;font-weight:600">Связано с контактом</div><div style="font-size:13px;color:#9A9AA1">Сергей Иванов · + заметка</div></div>
+        <svg class="ok" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4 4 10-10"/></svg>
+      </div>
+    </div>
+  </div>
+
+  <!-- actions -->
+  <div style="margin-top:auto;padding:0 20px 30px;display:flex;flex-direction:column;gap:12px">
+    <div style="background:#17171C;border-radius:16px;padding:16px;text-align:center;font-size:17px;font-weight:600;color:#fff">На главный</div>
+    <div style="text-align:center;font-size:15px;color:#5B54E6;font-weight:600">Открыть в Календаре</div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>
