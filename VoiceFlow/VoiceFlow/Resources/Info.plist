@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<key>CFBundleDisplayName</key>
+	<string>VoiceFlow</string>
+	<key>CFBundleExecutable</key>
+	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIdentifier</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>$(PRODUCT_NAME)</string>
+	<key>CFBundlePackageType</key>
+	<string>$(PRODUCT_BUNDLE_PACKAGE_TYPE)</string>
+	<key>CFBundleShortVersionString</key>
+	<string>$(MARKETING_VERSION)</string>
+	<key>CFBundleVersion</key>
+	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<key>LSRequiresIPhoneOS</key>
+	<true/>
+	<key>UILaunchScreen</key>
+	<dict/>
+	<key>UISupportedInterfaceOrientations</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+	</array>
+	<key>UIApplicationSupportsIndirectInputEvents</key>
+	<true/>
+
+	<!-- Privacy usage descriptions. Requested lazily, only when a feature needs them. -->
+	<key>NSMicrophoneUsageDescription</key>
+	<string>VoiceFlow uses the microphone to record what you say so it can turn it into events, tasks and notes.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>VoiceFlow transcribes your speech on device so it can understand your request.</string>
+	<key>NSCalendarsFullAccessUsageDescription</key>
+	<string>VoiceFlow creates calendar events and reminders from what you say, after you confirm them.</string>
+	<key>NSRemindersFullAccessUsageDescription</key>
+	<string>VoiceFlow creates reminders (tasks) from what you say, after you confirm them.</string>
+	<key>NSContactsUsageDescription</key>
+	<string>VoiceFlow matches the people you mention to your contacts. It never uploads your address book.</string>
+</dict>
+</plist>

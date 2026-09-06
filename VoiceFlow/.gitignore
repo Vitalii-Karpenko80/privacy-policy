@@ -1,0 +1,18 @@
+# Xcode / generated project
+*.xcodeproj
+*.xcworkspace
+xcuserdata/
+DerivedData/
+build/
+
+# macOS
+.DS_Store
+
+# Swift Package Manager
+.build/
+.swiftpm/
+Packages/
+
+# Secrets — never commit API keys
+Secrets.plist
+*.env
