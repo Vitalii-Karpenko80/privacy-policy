@@ -1,7 +1,9 @@
-# Xcode / generated project
-*.xcodeproj
+# Xcode
+# NOTE: VoiceFlow.xcodeproj is committed so the project opens with a double-click.
+# Only per-user state and build output are ignored.
 *.xcworkspace
 xcuserdata/
+**/xcuserdata/
 DerivedData/
 build/
 

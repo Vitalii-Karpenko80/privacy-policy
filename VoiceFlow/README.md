@@ -20,19 +20,32 @@
 
 ## Как открыть проект
 
-Проект описан декларативно через [XcodeGen](https://github.com/yonaskolb/XcodeGen),
-чтобы не хранить в git хрупкий `.xcodeproj`.
+Готовый `VoiceFlow.xcodeproj` уже лежит в репозитории — **просто откройте его**:
 
 ```bash
-brew install xcodegen        # если ещё не установлен
-cd VoiceFlow
-xcodegen generate            # создаст VoiceFlow.xcodeproj
-open VoiceFlow.xcodeproj
+git clone https://github.com/Vitalii-Karpenko80/privacy-policy.git
+cd privacy-policy && git checkout claude/voiceflow-ios-app
+open VoiceFlow/VoiceFlow.xcodeproj
 ```
 
-Если XcodeGen ставить не хочется — создайте в Xcode новый проект **App**
-(SwiftUI, iOS 18) и перетащите папку `VoiceFlow/` в проект (Info.plist и
-описания разрешений уже готовы в `VoiceFlow/Resources/`).
+или дважды кликните по `VoiceFlow/VoiceFlow.xcodeproj` в Finder. Затем в Xcode
+выберите симулятор (например, iPhone 16) и нажмите ▶️ (Cmd+R).
+
+> Проект использует формат «синхронизированных папок» Xcode 16 — все `.swift`
+> файлы подхватываются из папки `VoiceFlow/` автоматически, ничего добавлять
+> вручную не нужно. Нужен **Xcode 16+** (для iOS 18 SDK).
+
+### Запуск на своём iPhone
+
+Для записи речи нужен реальный iPhone (в симуляторе микрофон/распознавание
+не работают). В Xcode: таргет **VoiceFlow → Signing & Capabilities →**
+выберите свой **Team** (Apple ID) и при необходимости поменяйте
+`Bundle Identifier` на уникальный (например, `com.твоёимя.voiceflow`).
+
+### Альтернатива: XcodeGen
+
+Проект также описан в `project.yml`. Если предпочитаете генерировать `.xcodeproj`:
+`brew install xcodegen && cd VoiceFlow && xcodegen generate`.
 
 ## Структура
 
