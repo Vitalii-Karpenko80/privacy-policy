@@ -79,6 +79,31 @@
   .cols{display:grid;grid-template-columns:1.6fr 1fr;gap:18px;align-items:start}
   @media(max-width:1000px){.cols{grid-template-columns:1fr}}
 
+  .grid-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:16px;display:flex;flex-direction:column;gap:10px}
+  .card.click{cursor:pointer;transition:border-color .15s}
+  .card.click:hover{border-color:var(--accent)}
+  .card .ct{font-weight:700;font-size:15px}
+  .card .cmeta{color:var(--muted);font-size:12px;display:flex;gap:12px;flex-wrap:wrap}
+  .card .crow{display:flex;justify-content:space-between;align-items:center;gap:8px}
+  .money{font-variant-numeric:tabular-nums;font-weight:700}
+  .num{font-variant-numeric:tabular-nums}
+  .integ{display:flex;gap:12px;align-items:flex-start}
+  .integ .ilogo{width:44px;height:44px;border-radius:10px;display:grid;place-items:center;font-weight:800;font-size:15px;color:#04101f;flex:none}
+  .integ .idesc{color:var(--muted);font-size:12px;margin:2px 0 0}
+  .conn{font-size:11px;font-weight:700;padding:2px 9px;border-radius:20px}
+  .conn.on{background:rgba(79,224,160,.16);color:var(--done)}
+  .conn.off{background:var(--panel-2);color:var(--muted)}
+  .bidtable{width:100%;border-collapse:collapse;font-size:13px}
+  .bidtable th{text-align:left;color:var(--muted);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.4px;padding:8px 10px;border-bottom:1px solid var(--line)}
+  .bidtable td{padding:9px 10px;border-bottom:1px solid var(--line)}
+  .bidtable tr.win td{background:rgba(79,224,160,.08)}
+  .bidtable tr:last-child td{border-bottom:0}
+  .feed .fi{display:flex;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}
+  .feed .fi:last-child{border-bottom:0}
+  .feed .fic{width:28px;height:28px;border-radius:8px;background:var(--panel-2);display:grid;place-items:center;flex:none;font-size:14px}
+  .feed .ft{font-size:11px;color:var(--muted);margin-left:auto;white-space:nowrap}
+
   /* Ticket list */
   .filters{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}
   .filters select,.filters input{background:var(--panel);border:1px solid var(--line);color:var(--text);border-radius:8px;padding:8px 10px}
@@ -205,7 +230,11 @@
       <button class="navitem active" data-view="dashboard"><span class="ic">▦</span> Обзор</button>
       <button class="navitem" data-view="plan"><span class="ic">🗺</span> План <span class="badge" id="nb-plan">0</span></button>
       <button class="navitem" data-view="tickets"><span class="ic">✓</span> Задачи <span class="badge" id="nb-tickets">0</span></button>
+      <button class="navitem" data-view="purchases"><span class="ic">🧾</span> Закупки <span class="badge" id="nb-purch">0</span></button>
+      <button class="navitem" data-view="tenders"><span class="ic">📢</span> Тендеры <span class="badge" id="nb-tend">0</span></button>
       <button class="navitem" data-view="team"><span class="ic">👥</span> Команда</button>
+      <button class="navitem" data-view="history"><span class="ic">🕘</span> История проектов</button>
+      <button class="navitem" data-view="integrations"><span class="ic">🔌</span> Интеграции</button>
     </nav>
     <div class="side-foot">
       <button id="btnExport" title="Экспорт данных в файл">⭳ Экспорт</button>
@@ -314,6 +343,71 @@
           <div id="teamList"></div>
         </div>
       </section>
+
+      <!-- Purchases -->
+      <section class="view" id="view-purchases">
+        <div class="stat-grid" id="purchStats"></div>
+        <div class="filters">
+          <input id="pqSearch" placeholder="Поиск: материал или поставщик…">
+          <select id="pqStatus"><option value="">Все статусы</option></select>
+          <select id="pqCat"><option value="">Все категории</option></select>
+          <button class="btn ghost sm" id="btnExportPurchMenu">⭳ Выгрузка</button>
+          <button class="btn sm" id="btnNewPurch">＋ Позиция</button>
+        </div>
+        <div class="panel">
+          <div class="list-hd"><span style="flex:2">Наименование</span><span style="flex:1">Поставщик</span><span style="width:90px;text-align:right">Кол-во</span><span style="width:130px;text-align:right;padding-right:16px">Сумма</span><span style="width:120px">Статус</span></div>
+          <div id="purchList"></div>
+        </div>
+      </section>
+
+      <!-- Tenders -->
+      <section class="view" id="view-tenders">
+        <div class="filters">
+          <input id="tqSearch" placeholder="Поиск по тендерам…">
+          <select id="tqStatus"><option value="">Все статусы</option></select>
+          <button class="btn sm" id="btnNewTender">＋ Тендер</button>
+        </div>
+        <div id="tenderGrid" class="grid-cards"></div>
+      </section>
+
+      <!-- History -->
+      <section class="view" id="view-history">
+        <div class="cols">
+          <div class="panel">
+            <div class="ph"><h3>Проекты</h3><div style="flex:1"></div><span class="sub" id="histCount" style="color:var(--muted);font-size:12px"></span></div>
+            <div id="projHistory"></div>
+          </div>
+          <div class="panel">
+            <div class="ph"><h3>Лента событий</h3></div>
+            <div id="eventFeed" style="padding:6px 16px"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Integrations -->
+      <section class="view" id="view-integrations">
+        <div class="panel" style="margin-bottom:18px">
+          <div class="ph"><h3>Реквизиты организации</h3><div style="flex:1"></div><button class="btn ghost sm" id="btnEditOrg">Изменить</button></div>
+          <div id="orgBox" style="padding:16px 18px"></div>
+        </div>
+        <div class="panel" style="margin-bottom:18px">
+          <div class="ph"><h3>Бухгалтерские программы РФ</h3></div>
+          <div id="integrList" class="grid-cards" style="padding:16px"></div>
+        </div>
+        <div class="panel">
+          <div class="ph"><h3>Выгрузка данных</h3></div>
+          <div style="padding:16px 18px">
+            <p style="color:var(--muted);margin-top:0">Выгрузите закупки и счета в форматах, которые импортируют бухгалтерские программы. Файлы в кодировке UTF‑8 (CSV — с BOM для корректного открытия в Excel).</p>
+            <div style="display:flex;gap:10px;flex-wrap:wrap">
+              <button class="btn ghost" id="exp1c">🧾 Закупки → 1С (XML)</button>
+              <button class="btn ghost" id="expPurchCsv">📄 Закупки → CSV</button>
+              <button class="btn ghost" id="expInvCsv">📑 Реестр счетов → CSV</button>
+              <button class="btn ghost" id="expSuppCsv">🏢 Поставщики → CSV</button>
+            </div>
+            <p style="color:var(--muted);font-size:12px;margin-bottom:0">⚠ Прямая синхронизация в реальном времени (обмен документами по API/ЭДО) требует серверной части. В прототипе доступна выгрузка файлов.</p>
+          </div>
+        </div>
+      </section>
     </div>
   </main>
 </div>
@@ -339,6 +433,39 @@ const STATUS={
 };
 const PRIORITY={low:{l:"Низкий",cls:"pri-low"},med:{l:"Средний",cls:"pri-med"},high:{l:"Высокий",cls:"pri-high"},crit:{l:"Критический",cls:"pri-crit"}};
 const TYPES={defect:"Дефект",task:"Задача",inspection:"Осмотр"};
+
+/* --- Локализация РФ: закупки / тендеры / интеграции --- */
+const VAT=0.20; // НДС 20%
+const UNITS=["шт","компл","упак","м","м²","м³","кг","т","л","рулон","м.п."];
+const PCAT={material:"Материалы",tool:"Инструмент",tech:"Спецтехника",service:"Услуги/работы",other:"Прочее"};
+const PSTATUS={
+  planned:{l:"Запланировано",cls:"st-open",c:"#ffb74d"},
+  ordered:{l:"Заказано",cls:"st-progress",c:"#4dc3ff"},
+  delivered:{l:"Получено",cls:"st-review",c:"#c08bff"},
+  paid:{l:"Оплачено",cls:"st-done",c:"#4fe0a0"},
+  cancelled:{l:"Отменено",cls:"st-closed",c:"#6f92b3"}
+};
+const TSTATUS={
+  draft:{l:"Черновик",cls:"st-closed",c:"#6f92b3"},
+  open:{l:"Приём заявок",cls:"st-open",c:"#ffb74d"},
+  review:{l:"Оценка заявок",cls:"st-progress",c:"#4dc3ff"},
+  awarded:{l:"Победитель выбран",cls:"st-done",c:"#4fe0a0"},
+  closed:{l:"Закрыт",cls:"st-review",c:"#c08bff"}
+};
+const INTEGRATIONS=[
+  {id:"1c",name:"1С:Бухгалтерия",color:"#f7d417",desc:"Обмен документами поступления и счетами (выгрузка XML/CommerceML).",fields:["Адрес базы / публикации","Логин","Пароль"]},
+  {id:"1c_unf",name:"1С:УНФ",color:"#f7a417",desc:"Управление небольшой фирмой: заказы поставщикам, оплаты.",fields:["Адрес базы","Токен"]},
+  {id:"sbis",name:"СБИС (Тензор)",color:"#e2453d",desc:"Бухгалтерия и ЭДО: счета, накладные, акты.",fields:["ИНН","API-ключ"]},
+  {id:"kontur",name:"Контур.Бухгалтерия",color:"#1aaf5d",desc:"Учёт, зарплата, отчётность. Обмен через API.",fields:["Идентификатор","API-ключ"]},
+  {id:"moysklad",name:"МойСклад",color:"#0a84ff",desc:"Складской учёт и закупки. Импорт номенклатуры и заказов.",fields:["Логин","API-токен"]},
+  {id:"diadoc",name:"Диадок (ЭДО)",color:"#5a2fd6",desc:"Юридически значимый электронный документооборот с поставщиками.",fields:["ИНН","Ящик (Box ID)","API-ключ"]}
+];
+const money0=new Intl.NumberFormat("ru-RU",{style:"currency",currency:"RUB",maximumFractionDigits:0});
+const money2=new Intl.NumberFormat("ru-RU",{style:"currency",currency:"RUB",minimumFractionDigits:2,maximumFractionDigits:2});
+function fmtMoney(v){return money0.format(Math.round(v||0))}
+function fmtMoney2(v){return money2.format(v||0)}
+function purchTotal(p){return (p.qty||0)*(p.price||0)}
+function purchVat(p){const t=purchTotal(p);return t-t/(1+VAT)}
 
 /* Встроенный SVG «план этажа» (используется в демо-данных) */
 const FLOORPLAN_SVG=`<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="700" viewBox="0 0 1000 700">
@@ -387,11 +514,22 @@ function save(){
   catch(e){toast("⚠ Не удалось сохранить (возможно, переполнено хранилище фото)");}
 }
 function load(){
-  try{const r=localStorage.getItem(KEY);if(r)return JSON.parse(r);}catch(e){}
+  try{const r=localStorage.getItem(KEY);if(r)return migrate(JSON.parse(r));}catch(e){}
   return seed();
 }
-function curProject(){return db.projects.find(p=>p.id===db.currentProject)||db.projects[0]}
+function migrate(d){
+  d.suppliers=d.suppliers||[];
+  d.purchases=d.purchases||[];
+  d.tenders=d.tenders||[];
+  d.org=d.org||{name:"",inn:"",kpp:""};
+  if(!d.integrations){d.integrations={};INTEGRATIONS.forEach(i=>d.integrations[i.id]={enabled:false,cfg:{}});}
+  return d;
+}
+function curProject(){return db.projects.find(p=>p.id===db.currentProject)||db.projects.find(p=>!p.archived)||db.projects[0]}
 function ticketsOf(pid){return db.tickets.filter(t=>t.project===pid)}
+function purchasesOf(pid){return db.purchases.filter(p=>p.project===pid)}
+function tendersOf(pid){return db.tenders.filter(t=>t.project===pid)}
+function supplierName(id){const s=db.suppliers.find(x=>x.id===id);return s?s.name:(id||"—")}
 
 /* ============================ Демо-данные ============================ */
 function seed(){
@@ -417,9 +555,56 @@ function seed(){
     t.activity=[{id:uid("a"),type:"create",text:"Задача создана",by:"Виталий К.",at:t.created}];
     if(t.status!=="open")t.activity.push({id:uid("a"),type:"status",text:"Статус → "+STATUS[t.status].l,by:"Виталий К.",at:t.created+3600e3});
   });
+
+  // Поставщики
+  const s1=uid("s"),s2=uid("s"),s3=uid("s"),s4=uid("s");
+  const suppliers=[
+    {id:s1,name:"ООО «СтройМатериалы»",inn:"7701234567",contact:"Отдел продаж",phone:"+7 495 123-45-67"},
+    {id:s2,name:"ООО «БетонТорг»",inn:"7809876543",contact:"Пётр И.",phone:"+7 812 987-65-43"},
+    {id:s3,name:"ИП Сидоров А.А.",inn:"770512345678",contact:"Сидоров А.",phone:"+7 916 555-11-22"},
+    {id:s4,name:"ООО «ЭлектроСнаб»",inn:"5024001122",contact:"Менеджер",phone:"+7 495 777-88-99"}
+  ];
+  // Закупки
+  const P=(o)=>Object.assign({id:uid("pc"),project:pid,created:now()-Math.random()*7e8},o);
+  const purchases=[
+    P({item:"Кирпич керамический М-150",cat:"material",qty:12000,unit:"шт",price:24.5,supplier:s1,status:"paid",invoice:"СЧ-1042",delivered:now()-9e8}),
+    P({item:"Бетон B25 (М350)",cat:"material",qty:45,unit:"м³",price:5400,supplier:s2,status:"delivered",invoice:"УПД-337",delivered:now()-2e8}),
+    P({item:"Аренда башенного крана",cat:"tech",qty:1,unit:"компл",price:180000,supplier:s3,status:"ordered",invoice:"",delivered:null}),
+    P({item:"Кабель ВВГнг 3х2.5",cat:"material",qty:800,unit:"м",price:78,supplier:s4,status:"planned",invoice:"",delivered:null}),
+    P({item:"Монтаж системы отопления",cat:"service",qty:1,unit:"компл",price:340000,supplier:s3,status:"planned",invoice:"",delivered:null}),
+    P({item:"Гипсокартон КНАУФ 12.5мм",cat:"material",qty:220,unit:"шт",price:410,supplier:s1,status:"delivered",invoice:"УПД-341",delivered:now()-6e7})
+  ];
+  // Тендеры
+  const tenders=[
+    {id:uid("td"),project:pid,title:"Устройство фасада (вентфасад)",cat:"service",budget:2800000,
+     deadline:now()+12*864e5,status:"open",desc:"Монтаж навесного вентилируемого фасада ~1400 м². Материал заказчика.",
+     bids:[
+       {id:uid("b"),supplier:"ООО «ФасадПро»",inn:"7715002233",amount:2650000,days:45,note:"Опыт по серии домов",at:now()-3e8},
+       {id:uid("b"),supplier:"ООО «АльфаМонтаж»",inn:"5001998877",amount:2740000,days:38,note:"Своя бригада",at:now()-1e8}
+     ],winner:null,created:now()-4e8},
+    {id:uid("td"),project:pid,title:"Поставка лифтового оборудования",cat:"material",budget:5400000,
+     deadline:now()-2*864e5,status:"awarded",desc:"2 пассажирских лифта, г/п 630 кг.",
+     bids:[
+       {id:"win1",supplier:"ООО «ЛифтСервис»",inn:"7728110099",amount:5100000,days:60,note:"Гарантия 3 года",at:now()-5e8}
+     ],winner:"win1",created:now()-6e8},
+    {id:uid("td"),project:pid,title:"Благоустройство прилегающей территории",cat:"service",budget:1200000,
+     deadline:now()+25*864e5,status:"draft",desc:"Асфальтирование, озеленение, МАФ.",bids:[],winner:null,created:now()-5e7}
+  ];
+
+  // Архивный проект (для истории)
+  const apid=uid("prj");
+  const archProject={id:apid,name:"Склад «Логистик-Юг»",address:"г. Пример, Промзона, 12",
+    members:[{id:uid("u"),name:"Виталий К.",role:"Прораб"}],created:now()-3.2e10,archived:true,archivedAt:now()-2e9};
+
+  const org={name:"ООО «СтройГрупп»",inn:"7700112233",kpp:"770001001"};
+  const integrations={}; INTEGRATIONS.forEach(i=>integrations[i.id]={enabled:false,cfg:{}});
+
   return {currentProject:pid,seq:6,
-    projects:[{id:pid,name:"ЖК «Северный», корпус 3",address:"г. Пример, ул. Строителей, 3",members,created:now()}],
-    plans:[plan1],tickets};
+    projects:[
+      {id:pid,name:"ЖК «Северный», корпус 3",address:"г. Пример, ул. Строителей, 3",members,created:now()-1.1e10},
+      archProject
+    ],
+    plans:[plan1],tickets,suppliers,purchases,tenders,org,integrations};
 }
 
 /* ============================ Утилиты рендера ============================ */
@@ -438,20 +623,26 @@ function statusChip(s){const st=STATUS[s];return `<span class="chip ${st.cls}"><
 /* ============================ Проект / навигация ============================ */
 function renderProjects(){
   const sel=$("#projSelect");
-  sel.innerHTML=db.projects.map(p=>`<option value="${p.id}" ${p.id===db.currentProject?"selected":""}>${esc(p.name)}</option>`).join("");
+  const active=db.projects.filter(p=>!p.archived);
+  sel.innerHTML=active.map(p=>`<option value="${p.id}" ${p.id===db.currentProject?"selected":""}>${esc(p.name)}</option>`).join("");
 }
 function setView(v){
   ui.view=v;
   $$(".navitem").forEach(b=>b.classList.toggle("active",b.dataset.view===v));
   $$(".view").forEach(s=>s.classList.toggle("active",s.id==="view-"+v));
-  const titles={dashboard:"Обзор",plan:"План",tickets:"Задачи",team:"Команда"};
+  const titles={dashboard:"Обзор",plan:"План",tickets:"Задачи",purchases:"Закупки",tenders:"Тендеры",team:"Команда",history:"История проектов",integrations:"Интеграции с бухгалтерией"};
   $("#viewTitle").textContent=titles[v];
   const p=curProject();
-  $("#viewSub").textContent=p?p.name+(p.address?" · "+p.address:""):"";
+  const orgWide=(v==="history"||v==="integrations");
+  $("#viewSub").textContent=orgWide?(db.org.name||"Организация"):(p?p.name+(p.address?" · "+p.address:""):"");
   if(v==="plan")renderPlan();
   if(v==="tickets")renderTickets();
   if(v==="dashboard")renderDashboard();
   if(v==="team")renderTeam();
+  if(v==="purchases")renderPurchases();
+  if(v==="tenders")renderTenders();
+  if(v==="history")renderHistory();
+  if(v==="integrations")renderIntegrations();
 }
 
 /* ============================ Dashboard ============================ */
@@ -869,6 +1060,8 @@ function updateBadges(){
   const pid=db.currentProject;
   $("#nb-tickets").textContent=ticketsOf(pid).filter(t=>t.status!=="done"&&t.status!=="closed").length;
   $("#nb-plan").textContent=projectPlans().length;
+  $("#nb-purch").textContent=purchasesOf(pid).filter(x=>["planned","ordered","delivered"].includes(x.status)).length;
+  $("#nb-tend").textContent=tendersOf(pid).filter(t=>["open","review"].includes(t.status)).length;
 }
 function refreshAll(){renderDashboard();renderTickets();updateBadges();}
 
@@ -904,6 +1097,378 @@ $("#btnExport").onclick=exportData;
 $("#btnImport").onclick=()=>$("#fileInputData").click();
 $("[data-goto]")&&$$("[data-goto]").forEach(b=>b.onclick=()=>setView(b.dataset.goto));
 document.addEventListener("keydown",e=>{if(e.key==="Escape"){if($("#lightbox").classList.contains("show"))$("#lightbox").classList.remove("show");else closeModal();}});
+
+/* ============================ ЗАКУПКИ ============================ */
+function statusChipG(map,s){const st=map[s];return `<span class="chip ${st.cls}"><span class="dot" style="background:${st.c}"></span>${st.l}</span>`}
+function fillOptions(sel,map,all){
+  const cur=sel.value;
+  sel.innerHTML=`<option value="">${all}</option>`+Object.entries(map).map(([k,v])=>`<option value="${k}">${v.l||v}</option>`).join("");
+  sel.value=cur;
+}
+function renderPurchases(){
+  const p=curProject();if(!p)return;
+  fillOptions($("#pqStatus"),PSTATUS,"Все статусы");
+  fillOptions($("#pqCat"),PCAT,"Все категории");
+  let list=purchasesOf(p.id);
+  const q=$("#pqSearch").value.toLowerCase().trim(),fs=$("#pqStatus").value,fc=$("#pqCat").value;
+  if(q)list=list.filter(x=>x.item.toLowerCase().includes(q)||supplierName(x.supplier).toLowerCase().includes(q));
+  if(fs)list=list.filter(x=>x.status===fs);
+  if(fc)list=list.filter(x=>x.cat===fc);
+  list.sort((a,b)=>b.created-a.created);
+  // статистика
+  const all=purchasesOf(p.id).filter(x=>x.status!=="cancelled");
+  const sum=all.reduce((s,x)=>s+purchTotal(x),0);
+  const paid=all.filter(x=>x.status==="paid").reduce((s,x)=>s+purchTotal(x),0);
+  const vat=all.reduce((s,x)=>s+purchVat(x),0);
+  const toPay=sum-paid;
+  $("#purchStats").innerHTML=`
+    ${stat(fmtMoney(sum),"Бюджет закупок","#38b6ff",100)}
+    ${stat(fmtMoney(paid),"Оплачено","#4fe0a0",sum?paid/sum*100:0)}
+    ${stat(fmtMoney(toPay),"К оплате","#ffb74d",sum?toPay/sum*100:0)}
+    ${stat(fmtMoney(vat),"НДС (20%)","#c08bff",60)}`;
+  $("#purchList").innerHTML=list.length?list.map(purchRow).join(""):emptyBlock("Нет закупок по фильтру");
+  $$("#purchList .trow").forEach(r=>r.onclick=()=>openPurchForm(r.dataset.p));
+  updateBadges();
+}
+function purchRow(p){
+  const st=PSTATUS[p.status];
+  return `<div class="trow" data-p="${p.id}">
+    <div class="tmain" style="flex:2">
+      <div class="tt">${esc(p.item)}</div>
+      <div class="tm"><span>${PCAT[p.cat]||"—"}</span>${p.invoice?`<span>📑 ${esc(p.invoice)}</span>`:""}${p.delivered?`<span>получено ${fmtDate(p.delivered)}</span>`:""}</div>
+    </div>
+    <div class="tmain" style="flex:1;min-width:0"><div class="tt" style="font-weight:500;font-size:13px">${esc(supplierName(p.supplier))}</div></div>
+    <div class="num" style="width:90px;text-align:right">${(p.qty||0).toLocaleString("ru-RU")} ${esc(p.unit||"")}</div>
+    <div class="money" style="width:130px;text-align:right;padding-right:16px">${fmtMoney(purchTotal(p))}</div>
+    <div style="width:120px">${statusChipG(PSTATUS,p.status)}</div>
+  </div>`;
+}
+function supplierOptions(sel){return db.suppliers.map(s=>`<option value="${s.id}" ${s.id===sel?"selected":""}>${esc(s.name)}</option>`).join("")}
+function addSupplierPrompt(){
+  const name=prompt("Название поставщика (ООО/ИП):");if(!name)return null;
+  const inn=prompt("ИНН поставщика:","")||"";
+  const s={id:uid("s"),name:name.trim(),inn:inn.trim(),contact:"",phone:""};
+  db.suppliers.push(s);save();return s.id;
+}
+function openPurchForm(id){
+  const e=id?db.purchases.find(x=>x.id===id):null;
+  const d=e||{item:"",cat:"material",qty:1,unit:"шт",price:0,supplier:db.suppliers[0]?.id,status:"planned",invoice:"",delivered:null};
+  showModal(`
+    <div class="mh"><h3>${e?"Позиция закупки":"Новая закупка"}</h3><button class="x" onclick="closeModal()">×</button></div>
+    <div class="mb">
+      <div class="field"><label>Наименование</label><input id="pf-item" value="${esc(d.item)}" placeholder="Материал, работа или услуга"></div>
+      <div class="field-row">
+        <div class="field"><label>Категория</label><select id="pf-cat">${Object.entries(PCAT).map(([k,v])=>`<option value="${k}" ${k===d.cat?"selected":""}>${v}</option>`).join("")}</select></div>
+        <div class="field"><label>Статус</label><select id="pf-status">${Object.entries(PSTATUS).map(([k,v])=>`<option value="${k}" ${k===d.status?"selected":""}>${v.l}</option>`).join("")}</select></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Количество</label><input type="number" id="pf-qty" value="${d.qty}" min="0" step="any"></div>
+        <div class="field"><label>Ед. изм.</label><select id="pf-unit">${UNITS.map(u=>`<option ${u===d.unit?"selected":""}>${u}</option>`).join("")}</select></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Цена за ед., ₽ (с НДС)</label><input type="number" id="pf-price" value="${d.price}" min="0" step="any"></div>
+        <div class="field"><label>Сумма</label><input id="pf-total" value="" disabled></div>
+      </div>
+      <div class="field"><label>Поставщик</label>
+        <div style="display:flex;gap:8px">
+          <select id="pf-supplier" style="flex:1">${supplierOptions(d.supplier)}</select>
+          <button class="btn ghost sm" id="pf-addsup" type="button">＋ Новый</button>
+        </div>
+      </div>
+      <div class="field"><label>Счёт / УПД / накладная</label><input id="pf-invoice" value="${esc(d.invoice||"")}" placeholder="Напр. УПД-341"></div>
+    </div>
+    <div class="mf">${e?`<button class="btn danger" id="pf-del">Удалить</button>`:""}<div class="spacer"></div><button class="btn ghost" onclick="closeModal()">Отмена</button><button class="btn" id="pf-save">Сохранить</button></div>
+  `);
+  const recalc=()=>{const t=(+$("#pf-qty").value||0)*(+$("#pf-price").value||0);$("#pf-total").value=fmtMoney2(t)+"  (НДС "+fmtMoney2(t-t/1.2)+")";};
+  ["pf-qty","pf-price"].forEach(i=>$("#"+i).addEventListener("input",recalc));recalc();
+  $("#pf-addsup").onclick=()=>{const nid=addSupplierPrompt();if(nid){$("#pf-supplier").innerHTML=supplierOptions(nid);}};
+  $("#pf-save").onclick=()=>{
+    const item=$("#pf-item").value.trim();if(!item){toast("Введите наименование");return;}
+    const o={item,cat:$("#pf-cat").value,status:$("#pf-status").value,qty:+$("#pf-qty").value||0,
+      unit:$("#pf-unit").value,price:+$("#pf-price").value||0,supplier:$("#pf-supplier").value,invoice:$("#pf-invoice").value.trim()};
+    if(["delivered","paid"].includes(o.status)&&!(e&&e.delivered))o.delivered=now();
+    if(e){Object.assign(e,o);}else{db.purchases.push(Object.assign({id:uid("pc"),project:curProject().id,created:now(),delivered:null},o));}
+    save();closeModal();renderPurchases();toast("Сохранено");
+  };
+  const del=$("#pf-del");if(del)del.onclick=()=>{if(confirm("Удалить позицию?")){db.purchases=db.purchases.filter(x=>x.id!==id);save();closeModal();renderPurchases();}};
+  setTimeout(()=>$("#pf-item").focus(),50);
+}
+
+/* ============================ ТЕНДЕРЫ ============================ */
+function renderTenders(){
+  const p=curProject();if(!p)return;
+  fillOptions($("#tqStatus"),TSTATUS,"Все статусы");
+  let list=tendersOf(p.id);
+  const q=$("#tqSearch").value.toLowerCase().trim(),fs=$("#tqStatus").value;
+  if(q)list=list.filter(t=>t.title.toLowerCase().includes(q));
+  if(fs)list=list.filter(t=>t.status===fs);
+  list.sort((a,b)=>b.created-a.created);
+  $("#tenderGrid").innerHTML=list.length?list.map(tenderCard).join(""):emptyBlock("Нет тендеров");
+  $$("#tenderGrid .card").forEach(c=>c.onclick=()=>openTender(c.dataset.t));
+  updateBadges();
+}
+function tenderCard(t){
+  const best=t.bids.length?Math.min(...t.bids.map(b=>b.amount)):null;
+  const overdue=t.deadline&&t.deadline<now()&&["open","review"].includes(t.status);
+  return `<div class="card click" data-t="${t.id}">
+    <div class="crow"><div class="ct">${esc(t.title)}</div>${statusChipG(TSTATUS,t.status)}</div>
+    <div class="cmeta"><span>${PCAT[t.cat]||"—"}</span><span>Заявок: ${t.bids.length}</span></div>
+    <div class="crow"><span style="color:var(--muted);font-size:12px">Бюджет</span><span class="money">${fmtMoney(t.budget)}</span></div>
+    ${best!=null?`<div class="crow"><span style="color:var(--muted);font-size:12px">Лучшая цена</span><span class="money" style="color:var(--done)">${fmtMoney(best)}</span></div>`:""}
+    <div class="cmeta"><span style="${overdue?'color:var(--danger)':''}">Срок: ${fmtDate(t.deadline)}${overdue?" • просрочен":""}</span></div>
+  </div>`;
+}
+function openTender(id){
+  const t=db.tenders.find(x=>x.id===id);if(!t)return;
+  const bids=[...t.bids].sort((a,b)=>a.amount-b.amount);
+  showModal(`
+    <div class="mh"><h3>${esc(t.title)}</h3><button class="btn ghost sm" id="te-edit">✎</button><button class="x" onclick="closeModal()">×</button></div>
+    <div class="mb">
+      <div class="det-top">${statusChipG(TSTATUS,t.status)}<span class="chip" style="background:var(--panel-2);color:var(--text)">${PCAT[t.cat]||"—"}</span></div>
+      <div class="status-picker" id="te-status">
+        ${Object.entries(TSTATUS).map(([k,v])=>`<button data-s="${k}" class="${k===t.status?"on":""}" style="${k===t.status?`background:${v.c};border-color:${v.c}`:""}">${v.l}</button>`).join("")}
+      </div>
+      ${t.desc?`<div class="det-desc">${esc(t.desc)}</div>`:""}
+      <div class="meta-grid">
+        <div class="meta"><div class="k">Бюджет</div><div class="v">${fmtMoney(t.budget)}</div></div>
+        <div class="meta"><div class="k">Срок подачи</div><div class="v">${fmtDate(t.deadline)}</div></div>
+      </div>
+      <div class="field"><label>Заявки поставщиков (${t.bids.length})</label>
+        <table class="bidtable">
+          <thead><tr><th>Поставщик</th><th>ИНН</th><th style="text-align:right">Цена</th><th style="text-align:right">Срок</th><th></th></tr></thead>
+          <tbody>
+          ${bids.length?bids.map(b=>`<tr class="${t.winner===b.id?'win':''}">
+            <td>${esc(b.supplier)}${t.winner===b.id?' 🏆':''}${b.note?`<div style="color:var(--muted);font-size:11px">${esc(b.note)}</div>`:''}</td>
+            <td class="num">${esc(b.inn||"—")}</td>
+            <td class="money" style="text-align:right">${fmtMoney(b.amount)}</td>
+            <td class="num" style="text-align:right">${b.days||"—"} дн.</td>
+            <td style="text-align:right">${t.winner===b.id?'<span class="conn on">Победитель</span>':`<button class="btn ghost sm" data-win="${b.id}">Выбрать</button>`}</td>
+          </tr>`).join(""):`<tr><td colspan="5" style="color:var(--muted);text-align:center;padding:16px">Заявок пока нет</td></tr>`}
+          </tbody>
+        </table>
+        <div style="margin-top:10px"><button class="btn ghost sm" id="te-addbid">＋ Добавить заявку</button></div>
+      </div>
+    </div>
+    <div class="mf"><button class="btn danger" id="te-del">Удалить</button><div class="spacer"></div>
+      ${t.winner?`<button class="btn" id="te-toPurch">В закупки →</button>`:""}
+      <button class="btn ghost" onclick="closeModal()">Закрыть</button></div>
+  `,true);
+  $$("#te-status button").forEach(b=>b.onclick=()=>{t.status=b.dataset.s;save();openTender(id);renderTenders();});
+  $("#te-edit").onclick=()=>openTenderForm(id);
+  $("#te-del").onclick=()=>{if(confirm("Удалить тендер?")){db.tenders=db.tenders.filter(x=>x.id!==id);save();closeModal();renderTenders();}};
+  $("#te-addbid").onclick=()=>addBid(t,id);
+  $$("[data-win]").forEach(b=>b.onclick=()=>{t.winner=b.dataset.win;if(t.status!=="closed")t.status="awarded";save();openTender(id);renderTenders();toast("Победитель выбран");});
+  const tp=$("#te-toPurch");if(tp)tp.onclick=()=>{
+    const w=t.bids.find(b=>b.id===t.winner);if(!w)return;
+    let sid=db.suppliers.find(s=>s.name===w.supplier)?.id;
+    if(!sid){const s={id:uid("s"),name:w.supplier,inn:w.inn||"",contact:"",phone:""};db.suppliers.push(s);sid=s.id;}
+    db.purchases.push({id:uid("pc"),project:t.project,item:t.title,cat:t.cat,qty:1,unit:"компл",price:w.amount,supplier:sid,status:"ordered",invoice:"",delivered:null,created:now()});
+    save();closeModal();toast("Добавлено в закупки");setView("purchases");
+  };
+}
+function addBid(t,id){
+  const sup=prompt("Поставщик (название):");if(!sup)return;
+  const inn=prompt("ИНН:","")||"";
+  const amount=+prompt("Цена предложения, ₽:","0")||0;
+  const days=+prompt("Срок выполнения, дней:","0")||0;
+  const note=prompt("Примечание (необязательно):","")||"";
+  t.bids.push({id:uid("b"),supplier:sup.trim(),inn:inn.trim(),amount,days,note:note.trim(),at:now()});
+  if(t.status==="draft")t.status="open";
+  save();openTender(id);renderTenders();
+}
+function openTenderForm(id){
+  const e=id?db.tenders.find(x=>x.id===id):null;
+  const d=e||{title:"",cat:"service",budget:0,deadline:now()+14*864e5,status:"draft",desc:""};
+  showModal(`
+    <div class="mh"><h3>${e?"Редактировать тендер":"Новый тендер"}</h3><button class="x" onclick="closeModal()">×</button></div>
+    <div class="mb">
+      <div class="field"><label>Предмет тендера</label><input id="tf-title" value="${esc(d.title)}" placeholder="Что закупаем / какие работы"></div>
+      <div class="field-row">
+        <div class="field"><label>Категория</label><select id="tf-cat">${Object.entries(PCAT).map(([k,v])=>`<option value="${k}" ${k===d.cat?"selected":""}>${v}</option>`).join("")}</select></div>
+        <div class="field"><label>Бюджет (НМЦ), ₽</label><input type="number" id="tf-budget" value="${d.budget}" min="0"></div>
+      </div>
+      <div class="field"><label>Срок подачи заявок</label><input type="date" id="tf-deadline" value="${new Date(d.deadline).toISOString().slice(0,10)}"></div>
+      <div class="field"><label>Описание / требования</label><textarea id="tf-desc" placeholder="Объём, условия, требования к поставщику…">${esc(d.desc)}</textarea></div>
+    </div>
+    <div class="mf"><div class="spacer"></div><button class="btn ghost" onclick="closeModal()">Отмена</button><button class="btn" id="tf-save">Сохранить</button></div>
+  `);
+  $("#tf-save").onclick=()=>{
+    const title=$("#tf-title").value.trim();if(!title){toast("Введите предмет тендера");return;}
+    const o={title,cat:$("#tf-cat").value,budget:+$("#tf-budget").value||0,
+      deadline:new Date($("#tf-deadline").value).getTime(),desc:$("#tf-desc").value.trim()};
+    if(e){Object.assign(e,o);}else{db.tenders.push(Object.assign({id:uid("td"),project:curProject().id,status:"draft",bids:[],winner:null,created:now()},o));}
+    save();closeModal();renderTenders();toast("Сохранено");
+  };
+  setTimeout(()=>$("#tf-title").focus(),50);
+}
+
+/* ============================ ИСТОРИЯ ПРОЕКТОВ ============================ */
+function renderHistory(){
+  const list=[...db.projects].sort((a,b)=>(a.archived?1:0)-(b.archived?1:0)||b.created-a.created);
+  $("#histCount").textContent=`${db.projects.filter(p=>!p.archived).length} активных · ${db.projects.filter(p=>p.archived).length} в архиве`;
+  $("#projHistory").innerHTML=list.map(p=>{
+    const ts=ticketsOf(p.id);const done=ts.filter(t=>t.status==="done"||t.status==="closed").length;
+    const pct=ts.length?Math.round(done/ts.length*100):0;
+    const budget=purchasesOf(p.id).filter(x=>x.status!=="cancelled").reduce((s,x)=>s+purchTotal(x),0);
+    return `<div class="trow" data-open="${p.id}">
+      <div class="avatar" style="background:${p.archived?'var(--panel-2)':'var(--accent)'};color:${p.archived?'var(--muted)':'#fff'}">${p.archived?'🗄':'●'}</div>
+      <div class="tmain">
+        <div class="tt">${esc(p.name)} ${p.archived?'<span class="chip st-closed">Архив</span>':'<span class="chip st-done">Активен</span>'}</div>
+        <div class="tm"><span>${esc(p.address||"")}</span><span>создан ${fmtDate(p.created)}</span><span>задач: ${ts.length} (${pct}%)</span><span>закупки: ${fmtMoney(budget)}</span></div>
+      </div>
+      <button class="btn ghost sm" data-arch="${p.id}">${p.archived?"Восстановить":"В архив"}</button>
+    </div>`;
+  }).join("");
+  $$("#projHistory [data-arch]").forEach(b=>b.onclick=(e)=>{
+    e.stopPropagation();
+    const p=db.projects.find(x=>x.id===b.dataset.arch);
+    if(!p.archived&&db.projects.filter(x=>!x.archived).length<=1){toast("Нельзя архивировать единственный активный проект");return;}
+    p.archived=!p.archived;p.archivedAt=p.archived?now():null;
+    if(p.archived&&db.currentProject===p.id){db.currentProject=db.projects.find(x=>!x.archived).id;}
+    save();renderProjects();renderHistory();toast(p.archived?"Проект в архиве":"Проект восстановлен");
+  });
+  $$("#projHistory [data-open]").forEach(r=>r.onclick=()=>{
+    const p=db.projects.find(x=>x.id===r.dataset.open);
+    if(p.archived){toast("Восстановите проект, чтобы открыть");return;}
+    db.currentProject=p.id;save();renderProjects();setView("dashboard");
+  });
+  // Лента событий (по всем проектам)
+  const ev=[];
+  db.tickets.forEach(t=>t.activity.forEach(a=>ev.push({at:a.at,icon:"✓",text:`<b>#${t.code}</b> ${esc(a.by)} ${esc(a.text)}`})));
+  db.purchases.forEach(p=>ev.push({at:p.created,icon:"🧾",text:`Закупка: ${esc(p.item)} — ${fmtMoney(purchTotal(p))}`}));
+  db.tenders.forEach(t=>ev.push({at:t.created,icon:"📢",text:`Тендер: ${esc(t.title)}`}));
+  ev.sort((a,b)=>b.at-a.at);
+  $("#eventFeed").className="feed";
+  $("#eventFeed").innerHTML=ev.slice(0,40).map(e=>`<div class="fi"><div class="fic">${e.icon}</div><div style="flex:1">${e.text}</div><div class="ft">${fmtRel(e.at)}</div></div>`).join("")||emptyBlock("Событий пока нет");
+}
+
+/* ============================ ИНТЕГРАЦИИ ============================ */
+function renderIntegrations(){
+  const o=db.org;
+  $("#orgBox").innerHTML=`<div class="meta-grid" style="margin:0">
+    <div class="meta"><div class="k">Организация</div><div class="v">${esc(o.name||"— не указано —")}</div></div>
+    <div class="meta"><div class="k">ИНН</div><div class="v num">${esc(o.inn||"—")}</div></div>
+    <div class="meta"><div class="k">КПП</div><div class="v num">${esc(o.kpp||"—")}</div></div>
+    <div class="meta"><div class="k">Подключено систем</div><div class="v">${INTEGRATIONS.filter(i=>db.integrations[i.id]?.enabled).length} из ${INTEGRATIONS.length}</div></div>
+  </div>`;
+  $("#integrList").innerHTML=INTEGRATIONS.map(i=>{
+    const st=db.integrations[i.id]||{enabled:false};
+    return `<div class="card">
+      <div class="integ">
+        <div class="ilogo" style="background:${i.color}">${esc(i.name[0]==="1"?"1С":i.name.slice(0,2))}</div>
+        <div style="flex:1"><div class="ct" style="font-size:14px">${esc(i.name)}</div><p class="idesc">${esc(i.desc)}</p></div>
+      </div>
+      <div class="crow"><span class="conn ${st.enabled?'on':'off'}">${st.enabled?"Подключено":"Не подключено"}</span>
+        <button class="btn ghost sm" data-int="${i.id}">${st.enabled?"Настроить":"Подключить"}</button></div>
+    </div>`;
+  }).join("");
+  $$("#integrList [data-int]").forEach(b=>b.onclick=()=>openIntegrationCfg(b.dataset.int));
+}
+function openOrgForm(){
+  const o=db.org;
+  showModal(`
+    <div class="mh"><h3>Реквизиты организации</h3><button class="x" onclick="closeModal()">×</button></div>
+    <div class="mb">
+      <div class="field"><label>Наименование</label><input id="o-name" value="${esc(o.name||"")}" placeholder="ООО «…»"></div>
+      <div class="field-row">
+        <div class="field"><label>ИНН</label><input id="o-inn" value="${esc(o.inn||"")}" placeholder="10 или 12 цифр"></div>
+        <div class="field"><label>КПП</label><input id="o-kpp" value="${esc(o.kpp||"")}" placeholder="9 цифр"></div>
+      </div>
+    </div>
+    <div class="mf"><div class="spacer"></div><button class="btn ghost" onclick="closeModal()">Отмена</button><button class="btn" id="o-save">Сохранить</button></div>
+  `);
+  $("#o-save").onclick=()=>{db.org={name:$("#o-name").value.trim(),inn:$("#o-inn").value.trim(),kpp:$("#o-kpp").value.trim()};save();closeModal();renderIntegrations();setView("integrations");toast("Реквизиты сохранены");};
+}
+function openIntegrationCfg(intId){
+  const meta=INTEGRATIONS.find(i=>i.id===intId);const st=db.integrations[intId]||{enabled:false,cfg:{}};
+  showModal(`
+    <div class="mh"><h3>${esc(meta.name)}</h3><button class="x" onclick="closeModal()">×</button></div>
+    <div class="mb">
+      <p style="color:var(--muted);margin-top:0">${esc(meta.desc)}</p>
+      ${meta.fields.map((f,i)=>`<div class="field"><label>${esc(f)}</label><input id="int-f${i}" value="${esc(st.cfg["f"+i]||"")}" ${/пароль|ключ|токен/i.test(f)?'type="password"':''}></div>`).join("")}
+      <p style="color:var(--muted);font-size:12px">Данные хранятся только в этом браузере. Реальный обмен по API/ЭДО подключается на серверной стороне.</p>
+    </div>
+    <div class="mf">${st.enabled?`<button class="btn danger" id="int-off">Отключить</button>`:""}<div class="spacer"></div><button class="btn ghost" onclick="closeModal()">Отмена</button><button class="btn" id="int-save">${st.enabled?"Сохранить":"Подключить"}</button></div>
+  `);
+  $("#int-save").onclick=()=>{
+    const cfg={};meta.fields.forEach((f,i)=>cfg["f"+i]=$("#int-f"+i).value.trim());
+    db.integrations[intId]={enabled:true,cfg};save();closeModal();renderIntegrations();toast(meta.name+" подключена");
+  };
+  const off=$("#int-off");if(off)off.onclick=()=>{db.integrations[intId]={enabled:false,cfg:st.cfg};save();closeModal();renderIntegrations();toast("Отключено");};
+}
+
+/* ============================ ВЫГРУЗКА для бухгалтерии ============================ */
+function download(name,content,mime){
+  const blob=new Blob([content],{type:mime||"text/plain;charset=utf-8"});
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+}
+function csv(rows){ // ; -разделитель + BOM для Excel (RU)
+  const cell=v=>{v=(v==null?"":String(v));return /[;"\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v};
+  return "﻿"+rows.map(r=>r.map(cell).join(";")).join("\r\n");
+}
+function xesc(s){return (s==null?"":String(s)).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+function exportPurchasesCSV(){
+  const p=curProject();const rows=[["Наименование","Категория","Кол-во","Ед.изм.","Цена с НДС","Сумма","в т.ч. НДС 20%","Поставщик","ИНН поставщика","Счёт/УПД","Статус","Дата"]];
+  purchasesOf(p.id).forEach(x=>{const s=db.suppliers.find(z=>z.id===x.supplier)||{};
+    rows.push([x.item,PCAT[x.cat]||"",x.qty,x.unit,x.price,purchTotal(x),purchVat(x).toFixed(2),s.name||"",s.inn||"",x.invoice||"",PSTATUS[x.status].l,fmtDate(x.created)]);});
+  download("zakupki_"+dateSlug()+".csv",csv(rows),"text/csv;charset=utf-8");toast("CSV закупок выгружен");
+}
+function exportInvoicesCSV(){
+  const p=curProject();const rows=[["Счёт/УПД","Дата","Контрагент","ИНН","Сумма с НДС","НДС 20%","Статус оплаты","Назначение"]];
+  purchasesOf(p.id).filter(x=>x.invoice||["delivered","paid"].includes(x.status)).forEach(x=>{const s=db.suppliers.find(z=>z.id===x.supplier)||{};
+    rows.push([x.invoice||"—",fmtDate(x.delivered||x.created),s.name||"",s.inn||"",purchTotal(x),purchVat(x).toFixed(2),x.status==="paid"?"Оплачен":"К оплате",x.item]);});
+  download("reestr_schetov_"+dateSlug()+".csv",csv(rows),"text/csv;charset=utf-8");toast("Реестр счетов выгружен");
+}
+function exportSuppliersCSV(){
+  const rows=[["Наименование","ИНН","Контакт","Телефон"]];
+  db.suppliers.forEach(s=>rows.push([s.name,s.inn,s.contact,s.phone]));
+  download("postavshiki_"+dateSlug()+".csv",csv(rows),"text/csv;charset=utf-8");toast("Поставщики выгружены");
+}
+function exportPurchases1C(){
+  const p=curProject();const o=db.org;const list=purchasesOf(p.id).filter(x=>x.status!=="cancelled");
+  const docs=list.map(x=>{const s=db.suppliers.find(z=>z.id===x.supplier)||{};const total=purchTotal(x);const vat=purchVat(x);
+    return `    <Документ>
+      <Ид>${xesc(x.id)}</Ид>
+      <Номер>${xesc(x.invoice||x.id)}</Номер>
+      <Дата>${new Date(x.delivered||x.created).toISOString().slice(0,10)}</Дата>
+      <ХозОперация>Поступление товаров, услуг</ХозОперация>
+      <Роль>Покупатель</Роль>
+      <Валюта>RUB</Валюта>
+      <Сумма>${total.toFixed(2)}</Сумма>
+      <Контрагенты><Контрагент><Наименование>${xesc(s.name||"")}</Наименование><ИНН>${xesc(s.inn||"")}</ИНН><Роль>Продавец</Роль></Контрагент></Контрагенты>
+      <Товары><Товар>
+        <Наименование>${xesc(x.item)}</Наименование>
+        <БазоваяЕдиница>${xesc(x.unit||"шт")}</БазоваяЕдиница>
+        <ЦенаЗаЕдиницу>${(x.price||0).toFixed(2)}</ЦенаЗаЕдиницу>
+        <Количество>${x.qty||0}</Количество>
+        <Сумма>${total.toFixed(2)}</Сумма>
+        <СтавкиНалогов><СтавкаНалога><Наименование>НДС</Наименование><Ставка>20</Ставка></СтавкаНалога></СтавкиНалогов>
+        <Налоги><Налог><Наименование>НДС</Наименование><Сумма>${vat.toFixed(2)}</Сумма></Налог></Налоги>
+      </Товар></Товары>
+    </Документ>`;}).join("\n");
+  const xml=`<?xml version="1.0" encoding="UTF-8"?>
+<КоммерческаяИнформация ВерсияСхемы="2.05" ДатаФормирования="${new Date().toISOString().slice(0,10)}">
+  <Организация><Наименование>${xesc(o.name||"")}</Наименование><ИНН>${xesc(o.inn||"")}</ИНН><КПП>${xesc(o.kpp||"")}</КПП></Организация>
+  <Документы>
+${docs}
+  </Документы>
+</КоммерческаяИнформация>`;
+  download("vygruzka_1c_"+dateSlug()+".xml",xml,"application/xml;charset=utf-8");toast("Выгрузка 1С (XML) готова");
+}
+function dateSlug(){return new Date().toISOString().slice(0,10)}
+
+/* ============================ События новых экранов ============================ */
+$("#btnNewPurch").onclick=()=>openPurchForm(null);
+$("#btnExportPurchMenu").onclick=()=>setView("integrations");
+["pqSearch","pqStatus","pqCat"].forEach(id=>$("#"+id).addEventListener(id==="pqSearch"?"input":"change",renderPurchases));
+$("#btnNewTender").onclick=()=>openTenderForm(null);
+["tqSearch","tqStatus"].forEach(id=>$("#"+id).addEventListener(id==="tqSearch"?"input":"change",renderTenders));
+$("#btnEditOrg").onclick=openOrgForm;
+$("#exp1c").onclick=exportPurchases1C;
+$("#expPurchCsv").onclick=exportPurchasesCSV;
+$("#expInvCsv").onclick=exportInvoicesCSV;
+$("#expSuppCsv").onclick=exportSuppliersCSV;
 
 /* ============================ Старт ============================ */
 renderProjects();
