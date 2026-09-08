@@ -441,6 +441,7 @@
             <button class="btn sm" id="btnNewAct">＋ Сформировать КС-2</button>
             <button class="btn ghost sm" id="btnKS3">📄 Сводная КС-3</button>
             <button class="btn ghost sm" id="btnActReq">🏛 Реквизиты для КС</button>
+            <span id="actVatMode" style="display:inline-flex;align-items:center"></span>
           </div>
           <div class="panel">
             <div class="list-hd"><span style="width:120px">Форма</span><span style="flex:1">Период</span><span style="width:150px;text-align:right">Сумма без НДС</span><span style="width:150px;text-align:right;padding-right:12px">Всего с НДС</span><span style="width:150px"></span></div>
@@ -548,7 +549,7 @@ function wMargin(w){const r=wRev(w);return r?wProfit(w)/r*100:0}
 function wDoneVal(w){return (w.done||0)*(w.price||0)}     // выполнено, ₽
 function wDonePct(w){return (w.qty||0)?Math.min(100,(w.done||0)/w.qty*100):0}
 function actTotal(a){return a.lines.reduce((s,l)=>s+(l.qty||0)*(l.price||0),0)}
-function actVat(a){return a.lines.reduce((s,l)=>s+(l.qty||0)*(l.price||0)*vatRate(l)/100,0)}
+function actVat(a){if(isUsn(projById(a.project)))return 0;return a.lines.reduce((s,l)=>s+(l.qty||0)*(l.price||0)*vatRate(l)/100,0)}
 function actVatRates(a){return [...new Set(a.lines.map(l=>vatRate(l)))]} // уникальные ставки в акте
 
 /* Встроенный SVG «план этажа» (используется в демо-данных) */
@@ -610,8 +611,11 @@ function migrate(d){
   d.journal=d.journal||[];
   d.org=d.org||{name:"",inn:"",kpp:""};
   if(!d.integrations){d.integrations={};INTEGRATIONS.forEach(i=>d.integrations[i.id]={enabled:false,cfg:{}});}
+  (d.projects||[]).forEach(pr=>{if(!pr.vatMode)pr.vatMode="osno";});
   return d;
 }
+function projById(id){return db.projects.find(x=>x.id===id)}
+function isUsn(p){return !!(p&&p.vatMode==="usn")} // проект на УСН — без НДС
 function curProject(){return db.projects.find(p=>p.id===db.currentProject)||db.projects.find(p=>!p.archived)||db.projects[0]}
 function ticketsOf(pid){return db.tickets.filter(t=>t.project===pid)}
 function purchasesOf(pid){return db.purchases.filter(p=>p.project===pid)}
@@ -719,7 +723,7 @@ function seed(){
 
   const mainProject={id:pid,name:"ЖК «Северный», корпус 3",address:"г. Пример, ул. Строителей, 3",members,created:now()-1.1e10,
     investor:"ООО «Инвест-Девелопмент»",customer:"ООО «Инвест-Девелопмент»",contractor:"ООО «СтройГрупп»",
-    contractNo:"12-СМР/2026",contractDate:now()-1.1e10};
+    contractNo:"12-СМР/2026",contractDate:now()-1.1e10,vatMode:"osno"};
 
   return {currentProject:pid,seq:6,
     projects:[mainProject,archProject],
@@ -1115,7 +1119,7 @@ function openProjectForm(){
   $("#p-save").onclick=()=>{
     const name=$("#p-name").value.trim();if(!name){toast("Введите название");return;}
     const pid=uid("prj");
-    db.projects.push({id:pid,name,address:$("#p-addr").value.trim(),
+    db.projects.push({id:pid,name,address:$("#p-addr").value.trim(),vatMode:"osno",
       members:[{id:uid("u"),name:"Вы",role:"Прораб"}],created:now()});
     db.currentProject=pid;save();closeModal();renderProjects();setView("plan");renderPlan();toast("Проект создан");
   };
@@ -1694,6 +1698,7 @@ function exportEstimateCSV(){
 /* ============================ АКТЫ / ФОРМЫ КС ============================ */
 function renderActs(){
   const p=curProject();if(!p)return;
+  const vm=$("#actVatMode");if(vm)vm.innerHTML=isUsn(p)?`<span class="chip st-review">УСН · без НДС</span>`:`<span class="chip st-progress">ОСНО · плательщик НДС</span>`;
   const as=actsOf(p.id).sort((a,b)=>b.date-a.date);
   $("#actList").innerHTML=as.length?as.map(actRow).join(""):emptyBlock("Актов пока нет — сформируйте КС-2");
   $$("#actList [data-act]").forEach(b=>b.onclick=(e)=>{e.stopPropagation();genKS2(b.dataset.act);});
@@ -1752,11 +1757,13 @@ function openActForm(){
     </div>
     <div class="mf"><div class="spacer"></div><button class="btn ghost" onclick="closeModal()">Отмена</button><button class="btn" id="af-save">Сформировать</button></div>
   `,true);
+  const isu=isUsn(p);
   const recalc=()=>{let tot=0,vat=0;$$("#af-table input").forEach(i=>{const line=(+i.value||0)*(+i.dataset.price||0);tot+=line;vat+=line*(+i.dataset.vat||0)/100;});
-    $("#af-calc").innerHTML=`<div class="meta"><div class="k">Сумма без НДС</div><div class="v">${fmtMoney(tot)}</div></div>
-      <div class="meta"><div class="k">НДС</div><div class="v">${fmtMoney(vat)}</div></div>
-      <div class="meta"><div class="k">Всего с НДС</div><div class="v" style="color:var(--done)">${fmtMoney(tot+vat)}</div></div>
-      <div class="meta"><div class="k">Форма</div><div class="v">КС-2</div></div>`;};
+    if(isu)vat=0;
+    $("#af-calc").innerHTML=`<div class="meta"><div class="k">Сумма ${isu?"":"без НДС"}</div><div class="v">${fmtMoney(tot)}</div></div>
+      <div class="meta"><div class="k">НДС</div><div class="v">${isu?"не облагается":fmtMoney(vat)}</div></div>
+      <div class="meta"><div class="k">Всего${isu?"":" с НДС"}</div><div class="v" style="color:var(--done)">${fmtMoney(tot+vat)}</div></div>
+      <div class="meta"><div class="k">Режим</div><div class="v">${isu?"УСН (без НДС)":"ОСНО"}</div></div>`;};
   $$("#af-table input").forEach(i=>i.addEventListener("input",recalc));recalc();
   $("#af-save").onclick=()=>{
     const lines=[];
@@ -1803,13 +1810,21 @@ function openActReqForm(){
         <div class="field"><label>Договор №</label><input id="rq-no" value="${esc(p.contractNo||"")}"></div>
         <div class="field"><label>Дата договора</label><input type="date" id="rq-date" value="${p.contractDate?new Date(p.contractDate).toISOString().slice(0,10):""}"></div>
       </div>
+      <div class="field"><label>Налогообложение по договору</label>
+        <select id="rq-vat">
+          <option value="osno" ${!isUsn(p)?"selected":""}>ОСНО — плательщик НДС</option>
+          <option value="usn" ${isUsn(p)?"selected":""}>УСН — без НДС (не облагается)</option>
+        </select>
+        <div class="small" style="color:var(--muted);font-size:11px;margin-top:6px">УСН: наша реализация (КС-2/КС-3) — без НДС. Входящий НДС по закупкам от поставщиков сохраняется.</div>
+      </div>
     </div>
     <div class="mf"><div class="spacer"></div><button class="btn ghost" onclick="closeModal()">Отмена</button><button class="btn" id="rq-save">Сохранить</button></div>
   `);
   $("#rq-save").onclick=()=>{
     p.investor=$("#rq-inv").value.trim();p.customer=$("#rq-cust").value.trim();p.contractor=$("#rq-contr").value.trim();
     p.contractNo=$("#rq-no").value.trim();p.contractDate=$("#rq-date").value?new Date($("#rq-date").value).getTime():null;
-    save();closeModal();toast("Реквизиты сохранены");
+    p.vatMode=$("#rq-vat").value;
+    save();closeModal();renderActs();toast("Реквизиты сохранены");
   };
 }
 
@@ -1848,8 +1863,13 @@ function reqBlock(p){
 }
 function genKS2(actId){
   const a=db.acts.find(x=>x.id===actId);if(!a)return;const p=db.projects.find(x=>x.id===a.project);
-  const tot=actTotal(a),vat=actVat(a);const rates=actVatRates(a);
+  const tot=actTotal(a),vat=actVat(a);const rates=actVatRates(a);const usnP=isUsn(p);
   const vatLbl=rates.length===1?`В том числе НДС ${rates[0]}%:`:"В том числе НДС (разные ставки):";
+  const tailRows=usnP
+    ? `<tr><td colspan="6" class="r b">Всего:</td><td class="r b">${nf2.format(tot)}</td></tr>
+       <tr><td colspan="7" class="c">Без НДС (применяется УСН)</td></tr>`
+    : `<tr><td colspan="6" class="r">${vatLbl}</td><td class="r">${nf2.format(vat)}</td></tr>
+       <tr><td colspan="6" class="r b">Всего с НДС:</td><td class="r b">${nf2.format(tot+vat)}</td></tr>`;
   const rows=a.lines.map((l,i)=>`<tr>
     <td class="c">${i+1}</td><td>${xesc(l.name)}</td><td class="c">${xesc(l.section||"")}</td>
     <td class="c">${xesc(l.unit||"")}</td><td class="r">${nf2.format(l.qty)}</td>
@@ -1864,8 +1884,7 @@ function genKS2(actId){
       <tr class="small"><th class="c">1</th><th class="c">2</th><th class="c">3</th><th class="c">4</th><th class="c">5</th><th class="c">6</th><th class="c">7</th></tr></thead>
       <tbody>${rows}
         <tr><td colspan="6" class="r b">Итого:</td><td class="r b">${nf2.format(tot)}</td></tr>
-        <tr><td colspan="6" class="r">${vatLbl}</td><td class="r">${nf2.format(vat)}</td></tr>
-        <tr><td colspan="6" class="r b">Всего с НДС:</td><td class="r b">${nf2.format(tot+vat)}</td></tr>
+        ${tailRows}
       </tbody>
     </table>
     <table class="sign"><tr>
@@ -1882,9 +1901,14 @@ function genKS3(){
   const totalAll=as.reduce((s,a)=>s+actTotal(a),0);
   const totalYear=as.filter(a=>new Date(a.date).getFullYear()===yr).reduce((s,a)=>s+actTotal(a),0);
   const last=as[as.length-1];const totalPeriod=actTotal(last);
+  const usnP=isUsn(p);
   const vatAll=as.reduce((s,a)=>s+actVat(a),0);
   const vatYear=as.filter(a=>new Date(a.date).getFullYear()===yr).reduce((s,a)=>s+actVat(a),0);
   const vatPer=actVat(last);
+  const ks3tail=usnP
+    ? `<tr><td colspan="5" class="c">Без НДС (применяется УСН)</td></tr>`
+    : `<tr><td colspan="2" class="r">Сумма НДС:</td><td class="r">${nf2.format(vatAll)}</td><td class="r">${nf2.format(vatYear)}</td><td class="r">${nf2.format(vatPer)}</td></tr>
+       <tr><td colspan="2" class="r b">Всего с учётом НДС:</td><td class="r b">${nf2.format(totalAll+vatAll)}</td><td class="r b">${nf2.format(totalYear+vatYear)}</td><td class="r b">${nf2.format(totalPeriod+vatPer)}</td></tr>`;
   const inner=`
     <div class="code">Унифицированная форма № КС-3<br>Утв. пост. Госкомстата РФ от 11.11.1999 № 100<br>ОКУД 0322001</div>
     ${reqBlock(p)}
@@ -1895,8 +1919,7 @@ function genKS3(){
       <tbody>
         <tr><td class="c">1</td><td>Строительно-монтажные работы по договору № ${xesc(p.contractNo||"____")}</td><td class="r">${nf2.format(totalAll)}</td><td class="r">${nf2.format(totalYear)}</td><td class="r">${nf2.format(totalPeriod)}</td></tr>
         <tr><td colspan="2" class="r b">Итого:</td><td class="r b">${nf2.format(totalAll)}</td><td class="r b">${nf2.format(totalYear)}</td><td class="r b">${nf2.format(totalPeriod)}</td></tr>
-        <tr><td colspan="2" class="r">Сумма НДС:</td><td class="r">${nf2.format(vatAll)}</td><td class="r">${nf2.format(vatYear)}</td><td class="r">${nf2.format(vatPer)}</td></tr>
-        <tr><td colspan="2" class="r b">Всего с учётом НДС:</td><td class="r b">${nf2.format(totalAll+vatAll)}</td><td class="r b">${nf2.format(totalYear+vatYear)}</td><td class="r b">${nf2.format(totalPeriod+vatPer)}</td></tr>
+        ${ks3tail}
       </tbody>
     </table>
     <p class="small">Основание — акты о приёмке выполненных работ (КС-2): ${as.map(a=>"№ "+xesc(a.number)+" от "+dfmt(a.date)).join(", ")}</p>
