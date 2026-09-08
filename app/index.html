@@ -1,0 +1,904 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>СтройПлан — управление стройкой на планах</title>
+<style>
+  :root{
+    --bg:#0f1115; --panel:#161a21; --panel-2:#1c222b; --line:#262d38;
+    --text:#e8ecf1; --muted:#8b97a7; --accent:#3d8bff; --accent-2:#2b6fe0;
+    --open:#f0a92e; --progress:#3d8bff; --review:#a866f0; --done:#2fbf71; --closed:#6b7684;
+    --danger:#ef4d5a; --radius:12px;
+    --shadow:0 8px 30px rgba(0,0,0,.35);
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    font-size:14px; line-height:1.5; overflow:hidden;
+  }
+  button{font-family:inherit;cursor:pointer}
+  input,select,textarea{font-family:inherit;font-size:14px}
+  ::-webkit-scrollbar{width:10px;height:10px}
+  ::-webkit-scrollbar-thumb{background:#2c3542;border-radius:8px}
+  ::-webkit-scrollbar-track{background:transparent}
+
+  /* Layout */
+  .app{display:grid;grid-template-columns:250px 1fr;height:100vh}
+  .sidebar{background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
+  .brand{display:flex;align-items:center;gap:10px;padding:18px 18px 14px;border-bottom:1px solid var(--line)}
+  .brand .logo{width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,var(--accent),#7db0ff);display:grid;place-items:center;font-weight:800;color:#04101f;font-size:18px}
+  .brand h1{font-size:16px;margin:0;letter-spacing:.2px}
+  .brand small{color:var(--muted);font-size:11px;display:block}
+  .proj-pick{padding:12px 14px;border-bottom:1px solid var(--line)}
+  .proj-pick label{font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted)}
+  select.proj{width:100%;margin-top:6px;background:var(--panel-2);color:var(--text);border:1px solid var(--line);border-radius:9px;padding:9px 10px}
+  nav{padding:10px 8px;flex:1;overflow:auto}
+  nav .navitem{display:flex;align-items:center;gap:11px;width:100%;text-align:left;background:none;border:0;color:var(--muted);padding:10px 12px;border-radius:9px;font-size:14px}
+  nav .navitem .ic{width:20px;text-align:center;font-size:16px}
+  nav .navitem:hover{background:var(--panel-2);color:var(--text)}
+  nav .navitem.active{background:var(--accent);color:#fff;font-weight:600}
+  nav .navitem .badge{margin-left:auto;background:var(--panel-2);color:var(--muted);border-radius:20px;padding:1px 8px;font-size:11px}
+  nav .navitem.active .badge{background:rgba(255,255,255,.25);color:#fff}
+  .side-foot{padding:12px 14px;border-top:1px solid var(--line);display:flex;gap:8px}
+  .side-foot button{flex:1;background:var(--panel-2);border:1px solid var(--line);color:var(--muted);border-radius:8px;padding:8px;font-size:12px}
+  .side-foot button:hover{color:var(--text)}
+
+  .main{min-width:0;display:flex;flex-direction:column;height:100vh}
+  .topbar{display:flex;align-items:center;gap:14px;padding:14px 22px;border-bottom:1px solid var(--line);background:var(--panel)}
+  .topbar h2{margin:0;font-size:18px}
+  .topbar .sub{color:var(--muted);font-size:12px}
+  .spacer{flex:1}
+  .btn{background:var(--accent);color:#fff;border:0;border-radius:9px;padding:9px 15px;font-weight:600;font-size:13px;display:inline-flex;align-items:center;gap:7px}
+  .btn:hover{background:var(--accent-2)}
+  .btn.ghost{background:var(--panel-2);border:1px solid var(--line);color:var(--text)}
+  .btn.ghost:hover{border-color:#39424f}
+  .btn.danger{background:transparent;border:1px solid var(--danger);color:var(--danger)}
+  .btn.danger:hover{background:rgba(239,77,90,.12)}
+  .btn.sm{padding:6px 10px;font-size:12px}
+
+  .content{flex:1;overflow:auto;padding:22px}
+  .view{display:none}
+  .view.active{display:block}
+
+  /* Cards / stats */
+  .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-bottom:22px}
+  .stat{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:16px}
+  .stat .n{font-size:30px;font-weight:800;line-height:1}
+  .stat .l{color:var(--muted);font-size:12px;margin-top:8px;text-transform:uppercase;letter-spacing:.5px}
+  .stat .bar{height:4px;border-radius:4px;margin-top:12px;background:var(--panel-2);overflow:hidden}
+  .stat .bar>i{display:block;height:100%}
+
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}
+  .panel .ph{padding:14px 18px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px}
+  .panel .ph h3{margin:0;font-size:15px}
+  .cols{display:grid;grid-template-columns:1.6fr 1fr;gap:18px;align-items:start}
+  @media(max-width:1000px){.cols{grid-template-columns:1fr}}
+
+  /* Ticket list */
+  .filters{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}
+  .filters select,.filters input{background:var(--panel);border:1px solid var(--line);color:var(--text);border-radius:8px;padding:8px 10px}
+  .filters input{flex:1;min-width:180px}
+  .tlist{display:flex;flex-direction:column;gap:0}
+  .trow{display:flex;align-items:center;gap:14px;padding:13px 16px;border-bottom:1px solid var(--line);cursor:pointer}
+  .trow:hover{background:var(--panel-2)}
+  .trow:last-child{border-bottom:0}
+  .tcode{color:var(--muted);font-size:12px;font-variant-numeric:tabular-nums;width:64px;flex:none}
+  .tmain{flex:1;min-width:0}
+  .tmain .tt{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .tmain .tm{color:var(--muted);font-size:12px;margin-top:2px;display:flex;gap:10px;flex-wrap:wrap}
+  .chip{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;white-space:nowrap}
+  .dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+  .st-open{background:rgba(240,169,46,.15);color:var(--open)}
+  .st-progress{background:rgba(61,139,255,.15);color:var(--progress)}
+  .st-review{background:rgba(168,102,240,.15);color:var(--review)}
+  .st-done{background:rgba(47,191,113,.15);color:var(--done)}
+  .st-closed{background:rgba(107,118,132,.18);color:var(--closed)}
+  .pri{font-size:11px;font-weight:700}
+  .pri-low{color:var(--muted)} .pri-med{color:var(--open)} .pri-high{color:#ff7a3d} .pri-crit{color:var(--danger)}
+  .avatar{width:26px;height:26px;border-radius:50%;background:var(--panel-2);display:grid;place-items:center;font-size:11px;font-weight:700;flex:none;border:1px solid var(--line)}
+
+  .empty{text-align:center;color:var(--muted);padding:50px 20px}
+  .empty .big{font-size:44px;opacity:.5}
+
+  /* Plan viewer */
+  .plan-wrap{display:grid;grid-template-columns:1fr 320px;gap:0;height:calc(100vh - 61px)}
+  @media(max-width:1100px){.plan-wrap{grid-template-columns:1fr}}
+  .stage{position:relative;overflow:hidden;background:#0a0c10;background-image:radial-gradient(circle at 1px 1px,#1a2029 1px,transparent 0);background-size:26px 26px}
+  .stage.adding{cursor:crosshair}
+  .canvas{position:absolute;top:0;left:0;transform-origin:0 0;will-change:transform}
+  .canvas img{display:block;max-width:none;user-select:none;-webkit-user-drag:none;box-shadow:0 0 0 1px var(--line)}
+  .pin{position:absolute;transform:translate(-50%,-100%);cursor:pointer;filter:drop-shadow(0 3px 4px rgba(0,0,0,.5))}
+  .pin svg{display:block}
+  .pin .pnum{position:absolute;top:5px;left:50%;transform:translateX(-50%);color:#fff;font-size:11px;font-weight:800}
+  .pin.sel{animation:bob .6s infinite alternate}
+  @keyframes bob{to{transform:translate(-50%,-108%)}}
+  .stage-tools{position:absolute;left:14px;top:14px;display:flex;gap:8px;z-index:5}
+  .stage-tools button{background:rgba(22,26,33,.92);border:1px solid var(--line);color:var(--text);width:38px;height:38px;border-radius:9px;font-size:18px;backdrop-filter:blur(4px)}
+  .stage-tools button:hover{border-color:var(--accent)}
+  .stage-tools button.on{background:var(--accent);border-color:var(--accent);color:#fff}
+  .stage-hint{position:absolute;left:50%;bottom:16px;transform:translateX(-50%);background:rgba(22,26,33,.92);border:1px solid var(--line);padding:8px 14px;border-radius:20px;color:var(--muted);font-size:12px;z-index:5}
+  .plan-side{background:var(--panel);border-left:1px solid var(--line);overflow:auto;padding:14px}
+  .plan-side h3{margin:4px 0 12px;font-size:14px}
+  .plan-tabs{display:flex;gap:6px;margin-bottom:12px}
+  .plan-tabs button{flex:1;background:var(--panel-2);border:1px solid var(--line);color:var(--muted);padding:7px;border-radius:8px;font-size:12px}
+  .plan-tabs button.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .planpicker{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .planpicker select{flex:1;min-width:140px;background:var(--panel-2);border:1px solid var(--line);color:var(--text);border-radius:8px;padding:8px}
+  .mini-tlist .trow{padding:10px 8px}
+  .stage-empty{position:absolute;inset:0;display:grid;place-items:center;text-align:center;color:var(--muted);padding:30px}
+
+  /* Modal */
+  .modal-bg{position:fixed;inset:0;background:rgba(4,7,11,.66);display:none;align-items:center;justify-content:center;z-index:50;padding:20px;backdrop-filter:blur(3px)}
+  .modal-bg.show{display:flex}
+  .modal{background:var(--panel);border:1px solid var(--line);border-radius:16px;width:100%;max-width:640px;max-height:90vh;overflow:auto;box-shadow:var(--shadow)}
+  .modal.wide{max-width:760px}
+  .mh{display:flex;align-items:center;gap:12px;padding:18px 22px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--panel);z-index:2}
+  .mh h3{margin:0;font-size:17px;flex:1}
+  .mh .x{background:none;border:0;color:var(--muted);font-size:24px;line-height:1;padding:0 4px}
+  .mh .x:hover{color:var(--text)}
+  .mb{padding:20px 22px}
+  .field{margin-bottom:15px}
+  .field label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.4px}
+  .field input,.field select,.field textarea{width:100%;background:var(--panel-2);border:1px solid var(--line);color:var(--text);border-radius:9px;padding:10px 12px}
+  .field textarea{resize:vertical;min-height:80px}
+  .field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .mf{display:flex;gap:10px;padding:16px 22px;border-top:1px solid var(--line);position:sticky;bottom:0;background:var(--panel)}
+  .mf .spacer{flex:1}
+
+  /* Ticket detail */
+  .det-top{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:6px}
+  .det-desc{background:var(--panel-2);border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin:14px 0;white-space:pre-wrap}
+  .meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:14px 0}
+  .meta{background:var(--panel-2);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+  .meta .k{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px}
+  .meta .v{margin-top:4px;font-weight:600}
+  .photos{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
+  .photos img{width:88px;height:88px;object-fit:cover;border-radius:9px;border:1px solid var(--line);cursor:pointer}
+  .photo-add{width:88px;height:88px;border-radius:9px;border:1px dashed var(--line);background:var(--panel-2);color:var(--muted);font-size:26px;display:grid;place-items:center}
+  .activity{margin-top:8px}
+  .act{display:flex;gap:10px;padding:9px 0;border-bottom:1px solid var(--line);font-size:13px}
+  .act:last-child{border-bottom:0}
+  .act .at{color:var(--muted);font-size:11px;white-space:nowrap}
+  .comment-box{display:flex;gap:8px;margin-top:12px}
+  .comment-box input{flex:1;background:var(--panel-2);border:1px solid var(--line);color:var(--text);border-radius:9px;padding:10px 12px}
+  .status-picker{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+  .status-picker button{border:1px solid var(--line);background:var(--panel-2);color:var(--muted);border-radius:20px;padding:6px 12px;font-size:12px;font-weight:600}
+  .status-picker button.on{color:#fff}
+
+  .lightbox{position:fixed;inset:0;background:rgba(0,0,0,.9);display:none;align-items:center;justify-content:center;z-index:60}
+  .lightbox.show{display:flex}
+  .lightbox img{max-width:92vw;max-height:92vh;border-radius:8px}
+
+  .toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--panel-2);border:1px solid var(--line);color:var(--text);padding:11px 18px;border-radius:10px;opacity:0;transition:.25s;z-index:80;box-shadow:var(--shadow)}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  .hidden{display:none!important}
+  .list-hd{display:flex;align-items:center;padding:10px 16px;border-bottom:1px solid var(--line);color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.5px}
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="logo">С</div>
+      <div>
+        <h1>СтройПлан</h1>
+        <small>контроль работ на планах</small>
+      </div>
+    </div>
+    <div class="proj-pick">
+      <label>Проект</label>
+      <select class="proj" id="projSelect"></select>
+    </div>
+    <nav id="nav">
+      <button class="navitem active" data-view="dashboard"><span class="ic">▦</span> Обзор</button>
+      <button class="navitem" data-view="plan"><span class="ic">🗺</span> План <span class="badge" id="nb-plan">0</span></button>
+      <button class="navitem" data-view="tickets"><span class="ic">✓</span> Задачи <span class="badge" id="nb-tickets">0</span></button>
+      <button class="navitem" data-view="team"><span class="ic">👥</span> Команда</button>
+    </nav>
+    <div class="side-foot">
+      <button id="btnExport" title="Экспорт данных в файл">⭳ Экспорт</button>
+      <button id="btnImport" title="Импорт из файла">⭱ Импорт</button>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="main">
+    <div class="topbar">
+      <div>
+        <h2 id="viewTitle">Обзор</h2>
+        <div class="sub" id="viewSub"></div>
+      </div>
+      <div class="spacer"></div>
+      <button class="btn ghost sm" id="btnNewProject">＋ Проект</button>
+      <button class="btn" id="btnNewTicket">＋ Задача</button>
+    </div>
+
+    <div class="content">
+      <!-- Dashboard -->
+      <section class="view active" id="view-dashboard">
+        <div class="stat-grid" id="statGrid"></div>
+        <div class="cols">
+          <div class="panel">
+            <div class="ph"><h3>Последние задачи</h3><div class="spacer" style="flex:1"></div><button class="btn ghost sm" data-goto="tickets">Все задачи →</button></div>
+            <div id="recentList"></div>
+          </div>
+          <div class="panel">
+            <div class="ph"><h3>По статусам</h3></div>
+            <div id="statusBreak" style="padding:16px 18px"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Plan -->
+      <section class="view" id="view-plan" style="padding:0;margin:-22px">
+        <div class="plan-wrap">
+          <div class="stage" id="stage">
+            <div class="canvas" id="canvas"></div>
+            <div class="stage-tools">
+              <button id="btnAddPin" title="Поставить метку (задачу) на план">📍</button>
+              <button id="btnZoomIn" title="Приблизить">＋</button>
+              <button id="btnZoomOut" title="Отдалить">－</button>
+              <button id="btnZoomFit" title="Вписать">⤢</button>
+            </div>
+            <div class="stage-hint" id="stageHint"></div>
+            <div class="stage-empty hidden" id="stageEmpty">
+              <div>
+                <div style="font-size:46px;opacity:.4">🗺</div>
+                <p>В этом проекте пока нет планов.<br>Загрузите чертёж или план этажа, чтобы ставить на нём задачи.</p>
+                <button class="btn" id="btnUploadPlanEmpty">Загрузить план</button>
+              </div>
+            </div>
+          </div>
+          <div class="plan-side">
+            <div class="planpicker">
+              <select id="planSelect"></select>
+              <button class="btn ghost sm" id="btnUploadPlan" title="Загрузить новый план">＋</button>
+            </div>
+            <div class="plan-tabs">
+              <button class="on" data-ptab="pins">Метки</button>
+              <button data-ptab="info">План</button>
+            </div>
+            <div id="planPins" class="mini-tlist"></div>
+            <div id="planInfo" class="hidden"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Tickets -->
+      <section class="view" id="view-tickets">
+        <div class="filters">
+          <input id="fSearch" placeholder="Поиск по названию…">
+          <select id="fStatus">
+            <option value="">Все статусы</option>
+            <option value="open">Открыта</option>
+            <option value="progress">В работе</option>
+            <option value="review">На проверке</option>
+            <option value="done">Выполнена</option>
+            <option value="closed">Закрыта</option>
+          </select>
+          <select id="fType">
+            <option value="">Все типы</option>
+            <option value="defect">Дефект</option>
+            <option value="task">Задача</option>
+            <option value="inspection">Осмотр</option>
+          </select>
+          <select id="fAssignee"><option value="">Все исполнители</option></select>
+          <select id="fSort">
+            <option value="new">Сначала новые</option>
+            <option value="old">Сначала старые</option>
+            <option value="pri">По приоритету</option>
+          </select>
+        </div>
+        <div class="panel">
+          <div class="list-hd"><span style="width:64px">Код</span><span style="flex:1">Задача</span><span>Статус</span></div>
+          <div id="ticketList" class="tlist"></div>
+        </div>
+      </section>
+
+      <!-- Team -->
+      <section class="view" id="view-team">
+        <div class="panel">
+          <div class="ph"><h3>Команда проекта</h3><div style="flex:1"></div><button class="btn ghost sm" id="btnAddMember">＋ Участник</button></div>
+          <div id="teamList"></div>
+        </div>
+      </section>
+    </div>
+  </main>
+</div>
+
+<!-- Modal root -->
+<div class="modal-bg" id="modalBg"><div class="modal" id="modal"></div></div>
+<div class="lightbox" id="lightbox"><img id="lightboxImg" src="" alt=""></div>
+<div class="toast" id="toast"></div>
+<input type="file" id="fileInput" accept="image/*" class="hidden">
+<input type="file" id="fileInputData" accept="application/json,.json" class="hidden">
+<input type="file" id="fileInputPhoto" accept="image/*" multiple class="hidden">
+
+<script>
+"use strict";
+/* ============================ Модель данных / storage ============================ */
+const KEY="stroyplan_v1";
+const STATUS={
+  open:{l:"Открыта",cls:"st-open",c:"#f0a92e"},
+  progress:{l:"В работе",cls:"st-progress",c:"#3d8bff"},
+  review:{l:"На проверке",cls:"st-review",c:"#a866f0"},
+  done:{l:"Выполнена",cls:"st-done",c:"#2fbf71"},
+  closed:{l:"Закрыта",cls:"st-closed",c:"#6b7684"}
+};
+const PRIORITY={low:{l:"Низкий",cls:"pri-low"},med:{l:"Средний",cls:"pri-med"},high:{l:"Высокий",cls:"pri-high"},crit:{l:"Критический",cls:"pri-crit"}};
+const TYPES={defect:"Дефект",task:"Задача",inspection:"Осмотр"};
+
+/* Встроенный SVG «план этажа» (используется в демо-данных) */
+const FLOORPLAN_SVG=`<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="700" viewBox="0 0 1000 700">
+<rect width="1000" height="700" fill="#f4f1ea"/>
+<g stroke="#2b2b2b" stroke-width="7" fill="none">
+<rect x="60" y="60" width="880" height="580"/>
+<line x1="420" y1="60" x2="420" y2="360"/>
+<line x1="420" y1="360" x2="60" y2="360"/>
+<line x1="420" y1="230" x2="940" y2="230"/>
+<line x1="700" y1="230" x2="700" y2="640"/>
+<line x1="700" y1="450" x2="940" y2="450"/>
+</g>
+<g stroke="#2b2b2b" stroke-width="7">
+<line x1="200" y1="60" x2="280" y2="60" stroke="#f4f1ea"/>
+<line x1="420" y1="150" x2="420" y2="210" stroke="#f4f1ea"/>
+<line x1="700" y1="300" x2="700" y2="360" stroke="#f4f1ea"/>
+<line x1="530" y1="360" x2="600" y2="360" stroke="#f4f1ea"/>
+</g>
+<g fill="#8a8a8a" font-family="Arial" font-size="22">
+<text x="180" y="215">Гостиная</text>
+<text x="180" y="510">Кухня</text>
+<text x="520" y="150">Спальня 1</text>
+<text x="770" y="150">Спальня 2</text>
+<text x="760" y="360">Санузел</text>
+<text x="760" y="560">Коридор</text>
+</g>
+<g fill="#c9c2b4" font-family="Arial" font-size="16">
+<text x="60" y="45">1</text><text x="420" y="45">2</text><text x="700" y="45">3</text><text x="940" y="45">4</text>
+</g>
+</svg>`;
+
+let db=load();
+let ui={view:"dashboard",addingPin:false,zoom:1,panX:0,panY:0,selectedPin:null,planTab:"pins"};
+
+function uid(p){return (p||"id")+"_"+Math.random().toString(36).slice(2,9)}
+function now(){return Date.now()}
+function save(){
+  try{localStorage.setItem(KEY,JSON.stringify(db));}
+  catch(e){toast("⚠ Не удалось сохранить (возможно, переполнено хранилище фото)");}
+}
+function load(){
+  try{const r=localStorage.getItem(KEY);if(r)return JSON.parse(r);}catch(e){}
+  return seed();
+}
+function curProject(){return db.projects.find(p=>p.id===db.currentProject)||db.projects[0]}
+function ticketsOf(pid){return db.tickets.filter(t=>t.project===pid)}
+
+/* ============================ Демо-данные ============================ */
+function seed(){
+  const pid=uid("prj");
+  const m1=uid("u"),m2=uid("u"),m3=uid("u");
+  const members=[
+    {id:m1,name:"Виталий К.",role:"Прораб"},
+    {id:m2,name:"Анна С.",role:"Инженер ПТО"},
+    {id:m3,name:"Игорь М.",role:"Электрик"}
+  ];
+  // простой встроенный «план» в виде SVG-схемы этажа (data URI), чтобы всё работало из коробки
+  const planImg="data:image/svg+xml;base64,"+btoa(unescape(encodeURIComponent(FLOORPLAN_SVG)));
+  const plan1={id:uid("pl"),project:pid,name:"1 этаж — план",img:planImg,w:1000,h:700,created:now()};
+  const T=(o)=>Object.assign({id:uid("t"),project:pid,plan:plan1.id,photos:[],activity:[],created:now()-Math.random()*8e8},o);
+  const tickets=[
+    T({code:1,title:"Трещина в несущей стене, оси 2-3",type:"defect",status:"open",priority:"crit",assignee:m1,desc:"Обнаружена вертикальная трещина ~40 см у оконного проёма. Требуется заключение конструктора.",x:23,y:34,due:now()+3*864e5}),
+    T({code:2,title:"Не установлены розетки в кухне",type:"task",status:"progress",priority:"med",assignee:m3,desc:"Смонтировать 6 розеток по проекту электрики.",x:64,y:28}),
+    T({code:3,title:"Проверить гидроизоляцию санузла",type:"inspection",status:"review",priority:"high",assignee:m2,desc:"Контроль перед укладкой плитки.",x:78,y:62}),
+    T({code:4,title:"Затереть швы на стяжке",type:"defect",status:"done",priority:"low",assignee:m1,desc:"",x:40,y:70}),
+    T({code:5,title:"Демонтаж временной перегородки",type:"task",status:"closed",priority:"low",assignee:m3,desc:"",x:52,y:48})
+  ];
+  tickets.forEach(t=>{
+    t.activity=[{id:uid("a"),type:"create",text:"Задача создана",by:"Виталий К.",at:t.created}];
+    if(t.status!=="open")t.activity.push({id:uid("a"),type:"status",text:"Статус → "+STATUS[t.status].l,by:"Виталий К.",at:t.created+3600e3});
+  });
+  return {currentProject:pid,seq:6,
+    projects:[{id:pid,name:"ЖК «Северный», корпус 3",address:"г. Пример, ул. Строителей, 3",members,created:now()}],
+    plans:[plan1],tickets};
+}
+
+/* ============================ Утилиты рендера ============================ */
+const $=(s,r=document)=>r.querySelector(s);
+const $$=(s,r=document)=>[...r.querySelectorAll(s)];
+function esc(s){return (s==null?"":String(s)).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+function initials(n){return (n||"?").split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase()}
+function memberName(pid,uidv){const p=db.projects.find(x=>x.id===pid);const m=p&&p.members.find(x=>x.id===uidv);return m?m.name:"—"}
+function fmtDate(ts){if(!ts)return "—";const d=new Date(ts);return d.toLocaleDateString("ru-RU",{day:"2-digit",month:"short",year:"numeric"})}
+function fmtRel(ts){const s=(now()-ts)/1000;if(s<60)return"только что";if(s<3600)return Math.floor(s/60)+" мин назад";if(s<86400)return Math.floor(s/3600)+" ч назад";return fmtDate(ts)}
+let toastT;
+function toast(msg){const t=$("#toast");t.textContent=msg;t.classList.add("show");clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove("show"),2200)}
+
+function statusChip(s){const st=STATUS[s];return `<span class="chip ${st.cls}"><span class="dot" style="background:${st.c}"></span>${st.l}</span>`}
+
+/* ============================ Проект / навигация ============================ */
+function renderProjects(){
+  const sel=$("#projSelect");
+  sel.innerHTML=db.projects.map(p=>`<option value="${p.id}" ${p.id===db.currentProject?"selected":""}>${esc(p.name)}</option>`).join("");
+}
+function setView(v){
+  ui.view=v;
+  $$(".navitem").forEach(b=>b.classList.toggle("active",b.dataset.view===v));
+  $$(".view").forEach(s=>s.classList.toggle("active",s.id==="view-"+v));
+  const titles={dashboard:"Обзор",plan:"План",tickets:"Задачи",team:"Команда"};
+  $("#viewTitle").textContent=titles[v];
+  const p=curProject();
+  $("#viewSub").textContent=p?p.name+(p.address?" · "+p.address:""):"";
+  if(v==="plan")renderPlan();
+  if(v==="tickets")renderTickets();
+  if(v==="dashboard")renderDashboard();
+  if(v==="team")renderTeam();
+}
+
+/* ============================ Dashboard ============================ */
+function renderDashboard(){
+  const p=curProject();if(!p)return;
+  const ts=ticketsOf(p.id);
+  const counts={open:0,progress:0,review:0,done:0,closed:0};
+  ts.forEach(t=>counts[t.status]++);
+  const openActive=counts.open+counts.progress+counts.review;
+  const doneAll=counts.done+counts.closed;
+  const pct=ts.length?Math.round(doneAll/ts.length*100):0;
+  const crit=ts.filter(t=>t.priority==="crit"&&t.status!=="done"&&t.status!=="closed").length;
+  $("#statGrid").innerHTML=`
+    ${stat(ts.length,"Всего задач","#3d8bff",100)}
+    ${stat(openActive,"В работе","#f0a92e",ts.length?openActive/ts.length*100:0)}
+    ${stat(pct+"%","Готовность","#2fbf71",pct)}
+    ${stat(crit,"Критичных открыто",crit?"#ef4d5a":"#6b7684",crit?100:6)}`;
+  const recent=[...ts].sort((a,b)=>b.created-a.created).slice(0,6);
+  $("#recentList").innerHTML=recent.length?recent.map(ticketRow).join(""):emptyBlock("Пока нет задач");
+  bindRows($("#recentList"));
+  $("#statusBreak").innerHTML=Object.keys(STATUS).map(s=>{
+    const n=counts[s],w=ts.length?n/ts.length*100:0;
+    return `<div style="margin-bottom:12px">
+      <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:5px">
+        <span>${statusChip(s)}</span><span style="color:var(--muted)">${n}</span></div>
+      <div class="stat bar" style="margin:0;padding:0;border:0;height:6px;background:var(--panel-2)"><i style="width:${w}%;background:${STATUS[s].c}"></i></div>
+    </div>`;
+  }).join("");
+  updateBadges();
+}
+function stat(n,l,c,pct){return `<div class="stat"><div class="n" style="color:${c}">${n}</div><div class="l">${l}</div><div class="bar"><i style="width:${Math.max(4,Math.min(100,pct))}%;background:${c}"></i></div></div>`}
+function emptyBlock(t){return `<div class="empty"><div class="big">📋</div><p>${t}</p></div>`}
+
+/* ============================ Список задач ============================ */
+function ticketRow(t){
+  const pr=PRIORITY[t.priority];
+  return `<div class="trow" data-ticket="${t.id}">
+    <span class="tcode">#${t.code}</span>
+    <div class="tmain">
+      <div class="tt">${esc(t.title)}</div>
+      <div class="tm">
+        <span>${TYPES[t.type]}</span>
+        <span class="pri ${pr.cls}">● ${pr.l}</span>
+        <span>${memberName(t.project,t.assignee)}</span>
+        ${t.due?`<span>до ${fmtDate(t.due)}</span>`:""}
+        ${t.photos.length?`<span>📷 ${t.photos.length}</span>`:""}
+      </div>
+    </div>
+    ${statusChip(t.status)}
+    <div class="avatar" title="${esc(memberName(t.project,t.assignee))}">${initials(memberName(t.project,t.assignee))}</div>
+  </div>`;
+}
+function bindRows(root){$$(".trow",root).forEach(r=>r.onclick=()=>openTicket(r.dataset.ticket))}
+
+function renderTickets(){
+  const p=curProject();if(!p)return;
+  const sel=$("#fAssignee");
+  const cur=sel.value;
+  sel.innerHTML=`<option value="">Все исполнители</option>`+p.members.map(m=>`<option value="${m.id}">${esc(m.name)}</option>`).join("");
+  sel.value=cur;
+  let ts=ticketsOf(p.id);
+  const q=$("#fSearch").value.toLowerCase().trim();
+  const fs=$("#fStatus").value,ft=$("#fType").value,fa=$("#fAssignee").value,sort=$("#fSort").value;
+  if(q)ts=ts.filter(t=>t.title.toLowerCase().includes(q)||("#"+t.code).includes(q));
+  if(fs)ts=ts.filter(t=>t.status===fs);
+  if(ft)ts=ts.filter(t=>t.type===ft);
+  if(fa)ts=ts.filter(t=>t.assignee===fa);
+  const prio={crit:0,high:1,med:2,low:3};
+  ts.sort((a,b)=> sort==="old"?a.created-b.created : sort==="pri"?prio[a.priority]-prio[b.priority] : b.created-a.created);
+  $("#ticketList").innerHTML=ts.length?ts.map(ticketRow).join(""):emptyBlock("Нет задач по фильтру");
+  bindRows($("#ticketList"));
+  updateBadges();
+}
+
+/* ============================ План: viewer с зумом/панорамой/метками ============================ */
+function projectPlans(){return db.plans.filter(pl=>pl.project===db.currentProject)}
+function curPlan(){
+  const list=projectPlans();
+  return list.find(pl=>pl.id===ui.currentPlan)||list[0];
+}
+function renderPlan(){
+  const plans=projectPlans();
+  const sel=$("#planSelect");
+  sel.innerHTML=plans.map(pl=>`<option value="${pl.id}">${esc(pl.name)}</option>`).join("");
+  const plan=curPlan();
+  if(plan){sel.value=plan.id;ui.currentPlan=plan.id;}
+  $("#stageEmpty").classList.toggle("hidden",!!plan);
+  $("#canvas").classList.toggle("hidden",!plan);
+  if(!plan){$("#planPins").innerHTML="";$("#stageHint").textContent="";return;}
+  drawCanvas(plan);
+  renderPlanSide(plan);
+  updateBadges();
+}
+function drawCanvas(plan){
+  const cv=$("#canvas");
+  const ts=ticketsOf(plan.project).filter(t=>t.plan===plan.id);
+  cv.innerHTML=`<img src="${plan.img}" width="${plan.w}" height="${plan.h}" alt="${esc(plan.name)}">`+
+    ts.map(t=>pinHTML(t)).join("");
+  applyTransform();
+  $$(".pin",cv).forEach(el=>el.onclick=(e)=>{e.stopPropagation();openTicket(el.dataset.ticket);});
+  $("#stageHint").textContent = ui.addingPin ? "Кликните на план, чтобы поставить задачу" : "Колесо — зум · перетаскивание — панорама · клик по метке — открыть";
+}
+function pinHTML(t){
+  const c=STATUS[t.status].c;
+  const sel=ui.selectedPin===t.id?"sel":"";
+  return `<div class="pin ${sel}" data-ticket="${t.id}" style="left:${t.x}%;top:${t.y}%">
+    <svg width="30" height="40" viewBox="0 0 30 40"><path d="M15 0C6.7 0 0 6.7 0 15c0 10 15 25 15 25s15-15 15-25C30 6.7 23.3 0 15 0z" fill="${c}" stroke="#00000033"/></svg>
+    <span class="pnum">${t.code}</span>
+  </div>`;
+}
+function applyTransform(){$("#canvas").style.transform=`translate(${ui.panX}px,${ui.panY}px) scale(${ui.zoom})`}
+function zoomFit(){
+  const plan=curPlan();if(!plan)return;
+  const st=$("#stage");const pad=40;
+  const z=Math.min((st.clientWidth-pad)/plan.w,(st.clientHeight-pad)/plan.h);
+  ui.zoom=z>0?z:1;
+  ui.panX=(st.clientWidth-plan.w*ui.zoom)/2;
+  ui.panY=(st.clientHeight-plan.h*ui.zoom)/2;
+  applyTransform();
+}
+function renderPlanSide(plan){
+  const ts=ticketsOf(plan.project).filter(t=>t.plan===plan.id).sort((a,b)=>a.code-b.code);
+  $("#planPins").innerHTML=ts.length?ts.map(ticketRow).join(""):emptyBlock("На плане нет меток");
+  $$(".trow",$("#planPins")).forEach(r=>{
+    r.onmouseenter=()=>{ui.selectedPin=r.dataset.ticket;drawCanvas(plan)};
+    r.onmouseleave=()=>{ui.selectedPin=null;drawCanvas(plan)};
+    r.onclick=()=>openTicket(r.dataset.ticket);
+  });
+  $("#planInfo").innerHTML=`
+    <div class="meta" style="margin-bottom:10px"><div class="k">Название</div><div class="v">${esc(plan.name)}</div></div>
+    <div class="meta" style="margin-bottom:10px"><div class="k">Меток на плане</div><div class="v">${ts.length}</div></div>
+    <div class="meta" style="margin-bottom:10px"><div class="k">Размер</div><div class="v">${plan.w}×${plan.h}px</div></div>
+    <button class="btn ghost sm" id="btnRenamePlan" style="margin-right:8px">Переименовать</button>
+    <button class="btn danger sm" id="btnDeletePlan">Удалить план</button>`;
+  $("#btnRenamePlan").onclick=()=>{const n=prompt("Название плана:",plan.name);if(n){plan.name=n.trim();save();renderPlan();}};
+  $("#btnDeletePlan").onclick=()=>{
+    if(!confirm("Удалить план? Метки задач на нём тоже будут отвязаны."))return;
+    db.plans=db.plans.filter(x=>x.id!==plan.id);
+    ui.currentPlan=null;save();renderPlan();toast("План удалён");
+  };
+}
+
+/* Взаимодействие со сценой */
+function setupStage(){
+  const st=$("#stage"),cv=$("#canvas");
+  let dragging=false,moved=false,sx=0,sy=0,ox=0,oy=0;
+  st.addEventListener("mousedown",e=>{
+    if(ui.addingPin)return;
+    dragging=true;moved=false;sx=e.clientX;sy=e.clientY;ox=ui.panX;oy=ui.panY;
+  });
+  window.addEventListener("mousemove",e=>{
+    if(!dragging)return;
+    ui.panX=ox+(e.clientX-sx);ui.panY=oy+(e.clientY-sy);
+    if(Math.abs(e.clientX-sx)+Math.abs(e.clientY-sy)>3)moved=true;
+    applyTransform();
+  });
+  window.addEventListener("mouseup",()=>{dragging=false});
+  st.addEventListener("wheel",e=>{
+    e.preventDefault();
+    const rect=st.getBoundingClientRect();
+    const mx=e.clientX-rect.left,my=e.clientY-rect.top;
+    const factor=e.deltaY<0?1.12:1/1.12;
+    const nz=Math.min(6,Math.max(.1,ui.zoom*factor));
+    ui.panX=mx-(mx-ui.panX)*(nz/ui.zoom);
+    ui.panY=my-(my-ui.panY)*(nz/ui.zoom);
+    ui.zoom=nz;applyTransform();
+  },{passive:false});
+  st.addEventListener("click",e=>{
+    if(!ui.addingPin||moved)return;
+    const plan=curPlan();if(!plan)return;
+    const rect=st.getBoundingClientRect();
+    const px=(e.clientX-rect.left-ui.panX)/ui.zoom;
+    const py=(e.clientY-rect.top-ui.panY)/ui.zoom;
+    const x=px/plan.w*100,y=py/plan.h*100;
+    if(x<0||x>100||y<0||y>100){toast("Кликните в пределах плана");return;}
+    ui.addingPin=false;$("#btnAddPin").classList.remove("on");st.classList.remove("adding");
+    openTicketForm(null,{plan:plan.id,x:+x.toFixed(2),y:+y.toFixed(2)});
+  });
+}
+
+/* ============================ Команда ============================ */
+function renderTeam(){
+  const p=curProject();if(!p)return;
+  $("#teamList").innerHTML=p.members.map(m=>{
+    const load=ticketsOf(p.id).filter(t=>t.assignee===m.id&&t.status!=="done"&&t.status!=="closed").length;
+    return `<div class="trow" style="cursor:default">
+      <div class="avatar">${initials(m.name)}</div>
+      <div class="tmain"><div class="tt">${esc(m.name)}</div><div class="tm"><span>${esc(m.role||"—")}</span></div></div>
+      <span class="chip st-progress">${load} в работе</span>
+      <button class="btn danger sm" data-del="${m.id}">✕</button>
+    </div>`;
+  }).join("")||emptyBlock("Нет участников");
+  $$("[data-del]",$("#teamList")).forEach(b=>b.onclick=()=>{
+    if(ticketsOf(p.id).some(t=>t.assignee===b.dataset.del)){toast("Нельзя удалить: есть назначенные задачи");return;}
+    p.members=p.members.filter(m=>m.id!==b.dataset.del);save();renderTeam();
+  });
+}
+
+/* ============================ Модалки ============================ */
+function showModal(html,wide){const m=$("#modal");m.className="modal"+(wide?" wide":"");m.innerHTML=html;$("#modalBg").classList.add("show");}
+function closeModal(){$("#modalBg").classList.remove("show");$("#modal").innerHTML="";}
+$("#modalBg").addEventListener("mousedown",e=>{if(e.target===$("#modalBg"))closeModal()});
+
+function memberOptions(pid,sel){return curProject().members.map(m=>`<option value="${m.id}" ${m.id===sel?"selected":""}>${esc(m.name)}</option>`).join("")}
+
+function openTicketForm(id,preset){
+  const t=id?db.tickets.find(x=>x.id===id):null;
+  const d=t||Object.assign({title:"",type:"defect",status:"open",priority:"med",assignee:curProject().members[0]?.id,desc:"",due:null},preset||{});
+  const plans=projectPlans();
+  showModal(`
+    <div class="mh"><h3>${t?"Редактировать задачу":"Новая задача"}</h3><button class="x" onclick="closeModal()">×</button></div>
+    <div class="mb">
+      <div class="field"><label>Название</label><input id="f-title" value="${esc(d.title)}" placeholder="Например: трещина в стене"></div>
+      <div class="field-row">
+        <div class="field"><label>Тип</label><select id="f-type">${Object.entries(TYPES).map(([k,v])=>`<option value="${k}" ${k===d.type?"selected":""}>${v}</option>`).join("")}</select></div>
+        <div class="field"><label>Приоритет</label><select id="f-priority">${Object.entries(PRIORITY).map(([k,v])=>`<option value="${k}" ${k===d.priority?"selected":""}>${v.l}</option>`).join("")}</select></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Исполнитель</label><select id="f-assignee">${memberOptions(d.project,d.assignee)}</select></div>
+        <div class="field"><label>Срок</label><input type="date" id="f-due" value="${d.due?new Date(d.due).toISOString().slice(0,10):""}"></div>
+      </div>
+      <div class="field"><label>План</label><select id="f-plan"><option value="">— без привязки к плану —</option>${plans.map(pl=>`<option value="${pl.id}" ${pl.id===d.plan?"selected":""}>${esc(pl.name)}</option>`).join("")}</select></div>
+      <div class="field"><label>Описание</label><textarea id="f-desc" placeholder="Детали, что нужно сделать…">${esc(d.desc)}</textarea></div>
+    </div>
+    <div class="mf"><div class="spacer"></div><button class="btn ghost" onclick="closeModal()">Отмена</button><button class="btn" id="f-save">Сохранить</button></div>
+  `);
+  $("#f-save").onclick=()=>{
+    const title=$("#f-title").value.trim();if(!title){toast("Введите название");return;}
+    const due=$("#f-due").value?new Date($("#f-due").value).getTime():null;
+    const planV=$("#f-plan").value||null;
+    if(t){
+      const changes=[];
+      if(t.status!==$("#f-type").value){} // тип меняем без записи в журнал
+      t.title=title;t.type=$("#f-type").value;t.priority=$("#f-priority").value;
+      t.assignee=$("#f-assignee").value;t.due=due;t.desc=$("#f-desc").value.trim();t.plan=planV;
+      logAct(t,"edit","Задача изменена");
+      save();toast("Сохранено");
+    }else{
+      const nt={id:uid("t"),project:curProject().id,code:db.seq++,title,type:$("#f-type").value,
+        status:"open",priority:$("#f-priority").value,assignee:$("#f-assignee").value,
+        desc:$("#f-desc").value.trim(),due,plan:planV,x:d.x,y:d.y,photos:[],
+        activity:[{id:uid("a"),type:"create",text:"Задача создана",by:"Вы",at:now()}],created:now()};
+      db.tickets.push(nt);save();toast("Задача #"+nt.code+" создана");
+    }
+    closeModal();refreshAll();
+    if(ui.view==="plan")renderPlan();
+  };
+  setTimeout(()=>$("#f-title").focus(),50);
+}
+
+function logAct(t,type,text){t.activity.push({id:uid("a"),type,text,by:"Вы",at:now()})}
+
+function openTicket(id){
+  const t=db.tickets.find(x=>x.id===id);if(!t)return;
+  const pr=PRIORITY[t.priority];
+  const plan=db.plans.find(p=>p.id===t.plan);
+  showModal(`
+    <div class="mh">
+      <span class="tcode" style="width:auto">#${t.code}</span>
+      <h3>${esc(t.title)}</h3>
+      <button class="btn ghost sm" id="d-edit">✎</button>
+      <button class="x" onclick="closeModal()">×</button>
+    </div>
+    <div class="mb">
+      <div class="det-top">
+        ${statusChip(t.status)}
+        <span class="chip" style="background:var(--panel-2);color:var(--text)">${TYPES[t.type]}</span>
+        <span class="chip" style="background:var(--panel-2)"><span class="pri ${pr.cls}">● ${pr.l} приоритет</span></span>
+      </div>
+      <div class="status-picker" id="d-status">
+        ${Object.entries(STATUS).map(([k,v])=>`<button data-s="${k}" class="${k===t.status?"on":""}" style="${k===t.status?`background:${v.c};border-color:${v.c}`:""}">${v.l}</button>`).join("")}
+      </div>
+      ${t.desc?`<div class="det-desc">${esc(t.desc)}</div>`:`<div class="det-desc" style="color:var(--muted)">Без описания</div>`}
+      <div class="meta-grid">
+        <div class="meta"><div class="k">Исполнитель</div><div class="v">${esc(memberName(t.project,t.assignee))}</div></div>
+        <div class="meta"><div class="k">Срок</div><div class="v">${fmtDate(t.due)}</div></div>
+        <div class="meta"><div class="k">План</div><div class="v">${plan?esc(plan.name)+(t.x!=null?" 📍":""):"—"}</div></div>
+        <div class="meta"><div class="k">Создана</div><div class="v">${fmtDate(t.created)}</div></div>
+      </div>
+      <div class="field"><label>Фотофиксация</label>
+        <div class="photos" id="d-photos">
+          ${t.photos.map((p,i)=>`<img src="${p}" data-i="${i}" alt="фото">`).join("")}
+          <button class="photo-add" id="d-addphoto" title="Добавить фото">＋</button>
+        </div>
+      </div>
+      <div class="field"><label>Журнал / комментарии</label>
+        <div class="activity" id="d-activity">
+          ${[...t.activity].reverse().map(a=>`<div class="act"><div class="avatar" style="width:22px;height:22px;font-size:9px">${initials(a.by)}</div><div style="flex:1"><b>${esc(a.by)}</b> ${esc(a.text)}</div><div class="at">${fmtRel(a.at)}</div></div>`).join("")}
+        </div>
+        <div class="comment-box"><input id="d-comment" placeholder="Написать комментарий…"><button class="btn" id="d-send">→</button></div>
+      </div>
+    </div>
+    <div class="mf"><button class="btn danger" id="d-del">Удалить</button><div class="spacer"></div>
+      ${plan?`<button class="btn ghost" id="d-goplan">Показать на плане</button>`:""}
+      <button class="btn ghost" onclick="closeModal()">Закрыть</button></div>
+  `,true);
+  // status
+  $$("#d-status button").forEach(b=>b.onclick=()=>{
+    if(b.dataset.s===t.status)return;
+    t.status=b.dataset.s;logAct(t,"status","изменил(а) статус → "+STATUS[t.status].l);save();
+    openTicket(id);refreshAll();if(ui.view==="plan")renderPlan();
+  });
+  $("#d-edit").onclick=()=>openTicketForm(id);
+  $("#d-del").onclick=()=>{if(confirm("Удалить задачу?")){db.tickets=db.tickets.filter(x=>x.id!==id);save();closeModal();refreshAll();if(ui.view==="plan")renderPlan();toast("Удалено");}};
+  const gp=$("#d-goplan");if(gp)gp.onclick=()=>{closeModal();ui.currentPlan=t.plan;ui.selectedPin=t.id;setView("plan");setTimeout(()=>{ui.selectedPin=null;const pl=curPlan();if(pl)drawCanvas(pl);},1800);};
+  $("#d-send").onclick=()=>{const v=$("#d-comment").value.trim();if(!v)return;logAct(t,"comment",": "+v);save();openTicket(id);};
+  $("#d-comment").addEventListener("keydown",e=>{if(e.key==="Enter")$("#d-send").click()});
+  $("#d-addphoto").onclick=()=>{photoTarget=t;$("#fileInputPhoto").click()};
+  $$("#d-photos img").forEach(img=>img.onclick=()=>openLightbox(img.src));
+}
+
+/* Фото */
+let photoTarget=null;
+$("#fileInputPhoto").addEventListener("change",function(){
+  const files=[...this.files];if(!photoTarget||!files.length)return;
+  let done=0;
+  files.forEach(f=>{
+    const r=new FileReader();
+    r.onload=()=>{
+      // ужимаем через canvas, чтобы не забивать localStorage
+      const img=new Image();
+      img.onload=()=>{
+        const max=1000;let{width:w,height:h}=img;
+        if(w>max||h>max){const k=max/Math.max(w,h);w*=k;h*=k;}
+        const c=document.createElement("canvas");c.width=w;c.height=h;
+        c.getContext("2d").drawImage(img,0,0,w,h);
+        photoTarget.photos.push(c.toDataURL("image/jpeg",.7));
+        if(++done===files.length){logAct(photoTarget,"photo","добавил(а) фото ("+files.length+")");save();openTicket(photoTarget.id);}
+      };
+      img.src=r.result;
+    };
+    r.readAsDataURL(f);
+  });
+  this.value="";
+});
+function openLightbox(src){$("#lightboxImg").src=src;$("#lightbox").classList.add("show")}
+$("#lightbox").onclick=()=>$("#lightbox").classList.remove("show");
+
+/* ============================ Проект / участник ============================ */
+function openProjectForm(){
+  showModal(`
+    <div class="mh"><h3>Новый проект</h3><button class="x" onclick="closeModal()">×</button></div>
+    <div class="mb">
+      <div class="field"><label>Название</label><input id="p-name" placeholder="Например: ЖК «Восток», корпус 1"></div>
+      <div class="field"><label>Адрес</label><input id="p-addr" placeholder="Город, улица, дом"></div>
+    </div>
+    <div class="mf"><div class="spacer"></div><button class="btn ghost" onclick="closeModal()">Отмена</button><button class="btn" id="p-save">Создать</button></div>
+  `);
+  $("#p-save").onclick=()=>{
+    const name=$("#p-name").value.trim();if(!name){toast("Введите название");return;}
+    const pid=uid("prj");
+    db.projects.push({id:pid,name,address:$("#p-addr").value.trim(),
+      members:[{id:uid("u"),name:"Вы",role:"Прораб"}],created:now()});
+    db.currentProject=pid;save();closeModal();renderProjects();setView("plan");renderPlan();toast("Проект создан");
+  };
+  setTimeout(()=>$("#p-name").focus(),50);
+}
+function openMemberForm(){
+  showModal(`
+    <div class="mh"><h3>Новый участник</h3><button class="x" onclick="closeModal()">×</button></div>
+    <div class="mb">
+      <div class="field"><label>Имя</label><input id="m-name" placeholder="Имя Фамилия"></div>
+      <div class="field"><label>Роль</label><input id="m-role" placeholder="Прораб, инженер, электрик…"></div>
+    </div>
+    <div class="mf"><div class="spacer"></div><button class="btn ghost" onclick="closeModal()">Отмена</button><button class="btn" id="m-save">Добавить</button></div>
+  `);
+  $("#m-save").onclick=()=>{
+    const name=$("#m-name").value.trim();if(!name){toast("Введите имя");return;}
+    curProject().members.push({id:uid("u"),name,role:$("#m-role").value.trim()});
+    save();closeModal();renderTeam();toast("Участник добавлен");
+  };
+  setTimeout(()=>$("#m-name").focus(),50);
+}
+
+/* ============================ Загрузка плана ============================ */
+function uploadPlan(){planUploadMode=true;$("#fileInput").click()}
+let planUploadMode=false;
+$("#fileInput").addEventListener("change",function(){
+  const f=this.files[0];if(!f){return}
+  const r=new FileReader();
+  r.onload=()=>{
+    const img=new Image();
+    img.onload=()=>{
+      const name=prompt("Название плана:",f.name.replace(/\.[^.]+$/,""))||f.name;
+      const pl={id:uid("pl"),project:curProject().id,name:name.trim(),img:r.result,w:img.width,h:img.height,created:now()};
+      db.plans.push(pl);ui.currentPlan=pl.id;save();renderPlan();setView("plan");toast("План загружен");
+    };
+    img.src=r.result;
+  };
+  r.readAsDataURL(f);this.value="";
+});
+
+/* ============================ Экспорт / импорт ============================ */
+function exportData(){
+  const blob=new Blob([JSON.stringify(db,null,2)],{type:"application/json"});
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);
+  a.download="stroyplan-backup-"+new Date().toISOString().slice(0,10)+".json";a.click();
+  toast("Данные выгружены в файл");
+}
+$("#fileInputData").addEventListener("change",function(){
+  const f=this.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=()=>{
+    try{const d=JSON.parse(r.result);
+      if(!d.projects||!d.tickets)throw 0;
+      if(!confirm("Импорт заменит текущие данные. Продолжить?"))return;
+      db=d;save();renderProjects();setView("dashboard");toast("Данные импортированы");
+    }catch(e){toast("⚠ Неверный файл");}
+  };
+  r.readAsText(f);this.value="";
+});
+
+/* ============================ Общие обновления/бейджи ============================ */
+function updateBadges(){
+  const pid=db.currentProject;
+  $("#nb-tickets").textContent=ticketsOf(pid).filter(t=>t.status!=="done"&&t.status!=="closed").length;
+  $("#nb-plan").textContent=projectPlans().length;
+}
+function refreshAll(){renderDashboard();renderTickets();updateBadges();}
+
+/* ============================ События ============================ */
+$("#nav").addEventListener("click",e=>{const b=e.target.closest(".navitem");if(b)setView(b.dataset.view)});
+$("#projSelect").addEventListener("change",e=>{db.currentProject=e.target.value;ui.currentPlan=null;save();renderProjects();setView(ui.view);});
+$("#btnNewTicket").onclick=()=>openTicketForm(null, ui.view==="plan"&&curPlan()?{plan:curPlan().id}:null);
+$("#btnNewProject").onclick=openProjectForm;
+$("#btnAddMember").onclick=openMemberForm;
+$("#btnAddPin").onclick=()=>{
+  if(!curPlan()){toast("Сначала загрузите план");return;}
+  ui.addingPin=!ui.addingPin;
+  $("#btnAddPin").classList.toggle("on",ui.addingPin);
+  $("#stage").classList.toggle("adding",ui.addingPin);
+  drawCanvas(curPlan());
+};
+$("#btnZoomIn").onclick=()=>{ui.zoom=Math.min(6,ui.zoom*1.2);applyTransform()};
+$("#btnZoomOut").onclick=()=>{ui.zoom=Math.max(.1,ui.zoom/1.2);applyTransform()};
+$("#btnZoomFit").onclick=zoomFit;
+$("#btnUploadPlan").onclick=uploadPlan;
+$("#btnUploadPlanEmpty").onclick=uploadPlan;
+$("#planSelect").addEventListener("change",e=>{ui.currentPlan=e.target.value;ui.selectedPin=null;renderPlan();zoomFit();});
+$$("#view-plan .plan-tabs button").forEach(b=>b.onclick=()=>{
+  ui.planTab=b.dataset.ptab;
+  $$("#view-plan .plan-tabs button").forEach(x=>x.classList.toggle("on",x===b));
+  $("#planPins").classList.toggle("hidden",ui.planTab!=="pins");
+  $("#planInfo").classList.toggle("hidden",ui.planTab!=="info");
+});
+["fSearch","fStatus","fType","fAssignee","fSort"].forEach(id=>{
+  const el=$("#"+id);el.addEventListener(id==="fSearch"?"input":"change",renderTickets);
+});
+$("#btnExport").onclick=exportData;
+$("#btnImport").onclick=()=>$("#fileInputData").click();
+$("[data-goto]")&&$$("[data-goto]").forEach(b=>b.onclick=()=>setView(b.dataset.goto));
+document.addEventListener("keydown",e=>{if(e.key==="Escape"){if($("#lightbox").classList.contains("show"))$("#lightbox").classList.remove("show");else closeModal();}});
+
+/* ============================ Старт ============================ */
+renderProjects();
+setView("dashboard");
+setupStage();
+// первичный fit при первом заходе на план
+const _origRenderPlan=renderPlan;
+let _planFitted=false;
+window.addEventListener("resize",()=>{if(ui.view==="plan")applyTransform()});
+$$(".navitem")[1].addEventListener("click",()=>{if(!_planFitted){setTimeout(zoomFit,60);_planFitted=true;}});
+</script>
+</body>
+</html>
