@@ -125,6 +125,19 @@
   .g-grouphd{background:var(--panel-2);font-weight:700;font-size:11px;padding:6px 12px;border-bottom:1px solid var(--line);text-transform:uppercase;letter-spacing:.4px;color:var(--muted)}
   .g-legend{display:flex;gap:16px;flex-wrap:wrap;padding:10px 14px;color:var(--muted);font-size:12px;align-items:center}
   .g-legend span{display:inline-flex;align-items:center;gap:6px}
+  .g-inner{position:relative}
+  .g-bar.crit{box-shadow:0 0 0 2px var(--danger) inset;border-color:var(--danger)}
+  .g-bar.behind .fill{background:var(--danger)!important}
+  .g-exp{position:absolute;top:-2px;bottom:-2px;width:0;border-left:2px dashed #fff;opacity:.9;z-index:2}
+  .g-bar.drag{cursor:grab}.g-bar.drag:active{cursor:grabbing}
+  .g-h{position:absolute;top:0;bottom:0;width:8px;cursor:ew-resize;z-index:3}
+  .g-h.l{left:0}.g-h.r{right:0}
+  .g-mk{position:absolute;top:12px;width:12px;height:12px;transform:translateX(-50%) rotate(45deg);border:1px solid rgba(0,0,0,.3);z-index:3;cursor:default}
+  .g-deps{position:absolute;left:0;top:0;pointer-events:none;z-index:1;overflow:visible}
+  .g-scale{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+  .g-scale button{background:var(--panel);border:0;color:var(--muted);padding:8px 12px;font-size:12px}
+  .g-scale button.on{background:var(--accent);color:#fff}
+  .g-scale button:not(.on):hover{background:var(--panel-2);color:var(--text)}
 
   /* Ticket list */
   .filters{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}
@@ -391,7 +404,11 @@
         </div>
         <div id="purchGanttTab" class="hidden">
           <div class="panel">
-            <div class="ph"><h3>График поставок</h3><div style="flex:1"></div>
+            <div class="ph"><h3>График поставок</h3>
+              <div class="g-scale" id="purchScale" style="margin-left:14px">
+                <button data-sc="week">Недели</button><button data-sc="month" class="on">Месяцы</button><button data-sc="quarter">Кварталы</button>
+              </div>
+              <div style="flex:1"></div>
               <div class="g-legend" style="padding:0">
                 <span><i style="width:14px;height:10px;border-radius:3px;background:var(--done);display:inline-block"></i> получено/оплачено</span>
                 <span><i style="width:14px;height:10px;border-radius:3px;background:var(--progress);display:inline-block"></i> в пути/заказано</span>
@@ -473,8 +490,12 @@
 
       <!-- Construction schedule (Gantt) -->
       <section class="view" id="view-schedule">
+        <div class="stat-grid" id="schedStats"></div>
         <div class="filters">
           <select id="gqSection"><option value="">Все разделы</option></select>
+          <div class="g-scale" id="schedScale">
+            <button data-sc="week">Недели</button><button data-sc="month" class="on">Месяцы</button><button data-sc="quarter">Кварталы</button>
+          </div>
           <button class="btn ghost sm" id="btnSchedCsv">⭳ График в CSV</button>
         </div>
         <div class="panel">
@@ -773,6 +794,12 @@ function seed(){
   // демо-даты для графика строительства (по разделам, со сдвигом внутри раздела)
   const wdates={КЖ:[-8e9,-1e9],АР:[-4e9,3.5e9],КМ:[-1.5e9,1.5e9],ОВ:[1e9,5e9],ВК:[-1e9,4e9],ЭОМ:[3e9,7e9]};
   works.forEach((w,i)=>{const r=wdates[w.section]||[-2e9,3e9];w.start=now()+r[0]+i*1.2e8;w.end=now()+r[1]+i*1.2e8;});
+  // зависимости (finish-to-start) для критического пути и стрелок
+  const D=(i,arr)=>{works[i].deps=arr.map(k=>works[k].id);};
+  D(0,[2]);D(1,[0]);D(3,[1]);D(4,[3]);D(5,[3]);D(9,[4]);D(7,[5]);
+  // связь закупок с работами
+  purchases[3].workId=works[9].id; // кабель → электромонтаж
+  purchases[4].workId=works[7].id; // монтаж отопления (закупка) → работа ОВ
   // Акт КС-2 (демо)
   const acts=[{id:uid("act"),project:pid,number:"1",kind:"КС-2",date:now()-6e8,from:now()-9e8,to:now()-6e8,
     lines:[
@@ -1346,7 +1373,7 @@ function addSupplierPrompt(){
 }
 function openPurchForm(id){
   const e=id?db.purchases.find(x=>x.id===id):null;
-  const d=e||{item:"",cat:"material",qty:1,unit:"шт",price:0,vat:VATP,supplier:db.suppliers[0]?.id,status:"planned",invoice:"",delivered:null,plannedDelivery:null};
+  const d=e||{item:"",cat:"material",qty:1,unit:"шт",price:0,vat:VATP,supplier:db.suppliers[0]?.id,status:"planned",invoice:"",delivered:null,plannedDelivery:null,workId:null};
   showModal(`
     <div class="mh"><h3>${e?"Позиция закупки":"Новая закупка"}</h3><button class="x" onclick="closeModal()">×</button></div>
     <div class="mb">
@@ -1374,6 +1401,9 @@ function openPurchForm(id){
         <div class="field"><label>Счёт / УПД / накладная</label><input id="pf-invoice" value="${esc(d.invoice||"")}" placeholder="Напр. УПД-341"></div>
         <div class="field"><label>Плановая поставка (для графика)</label><input type="date" id="pf-plan" value="${d.plannedDelivery?new Date(d.plannedDelivery).toISOString().slice(0,10):""}"></div>
       </div>
+      <div class="field"><label>Связать с работой (для графиков)</label>
+        <select id="pf-work"><option value="">— не связано —</option>${worksOf(curProject().id).map(w=>`<option value="${w.id}" ${d.workId===w.id?"selected":""}>${w.section} · ${esc(w.name)}</option>`).join("")}</select>
+      </div>
     </div>
     <div class="mf">${e?`<button class="btn danger" id="pf-del">Удалить</button>`:""}<div class="spacer"></div><button class="btn ghost" onclick="closeModal()">Отмена</button><button class="btn" id="pf-save">Сохранить</button></div>
   `);
@@ -1384,7 +1414,7 @@ function openPurchForm(id){
     const item=$("#pf-item").value.trim();if(!item){toast("Введите наименование");return;}
     const o={item,cat:$("#pf-cat").value,status:$("#pf-status").value,qty:+$("#pf-qty").value||0,
       unit:$("#pf-unit").value,price:+$("#pf-price").value||0,vat:+$("#pf-vat").value||0,supplier:$("#pf-supplier").value,invoice:$("#pf-invoice").value.trim(),
-      plannedDelivery:$("#pf-plan").value?new Date($("#pf-plan").value).getTime():null};
+      plannedDelivery:$("#pf-plan").value?new Date($("#pf-plan").value).getTime():null,workId:$("#pf-work").value||null};
     if(["delivered","paid"].includes(o.status)&&!(e&&e.delivered))o.delivered=now();
     if(e){Object.assign(e,o);}else{db.purchases.push(Object.assign({id:uid("pc"),project:curProject().id,created:now(),delivered:null},o));}
     save();closeModal();renderPurchases();toast("Сохранено");
@@ -1720,7 +1750,7 @@ function workRow(w){
 }
 function openWorkForm(id){
   const e=id?db.works.find(x=>x.id===id):null;
-  const d=e||{section:"АР",name:"",unit:"м²",qty:1,price:0,cost:0,vat:VATP,done:0,start:null,end:null};
+  const d=e||{section:"АР",name:"",unit:"м²",qty:1,price:0,cost:0,vat:VATP,done:0,start:null,end:null,deps:[]};
   showModal(`
     <div class="mh"><h3>${e?"Позиция сметы":"Новая позиция сметы"}</h3><button class="x" onclick="closeModal()">×</button></div>
     <div class="mb">
@@ -1742,6 +1772,12 @@ function openWorkForm(id){
         <div class="field"><label>Себестоимость за ед., ₽</label><input type="number" id="wf-cost" value="${d.cost}" min="0" step="any"></div>
       </div>
       <div class="field"><label>Ставка НДС (для КС-2/КС-3)</label><select id="wf-vat" style="max-width:200px">${vatSelectOptions(d.vat)}</select></div>
+      <div class="field"><label>Зависит от работ (Ctrl/Cmd — несколько)</label>
+        <select id="wf-deps" multiple size="4" style="height:auto">
+          ${worksOf(curProject().id).filter(x=>!(e&&x.id===e.id)).map(x=>`<option value="${x.id}" ${(d.deps||[]).includes(x.id)?"selected":""}>${x.section} · ${esc(x.name)}</option>`).join("")}
+        </select>
+        <div class="small" style="color:var(--muted);font-size:11px;margin-top:4px">Finish-to-start. Влияет на критический путь и стрелки на графике.</div>
+      </div>
       <div class="meta-grid" id="wf-calc" style="margin-bottom:0"></div>
     </div>
     <div class="mf">${e?`<button class="btn danger" id="wf-del">Удалить</button>`:""}<div class="spacer"></div><button class="btn ghost" onclick="closeModal()">Отмена</button><button class="btn" id="wf-save">Сохранить</button></div>
@@ -1758,7 +1794,8 @@ function openWorkForm(id){
     const name=$("#wf-name").value.trim();if(!name){toast("Введите наименование");return;}
     const o={section:$("#wf-section").value,unit:$("#wf-unit").value,name,qty:+$("#wf-qty").value||0,
       done:+$("#wf-done").value||0,price:+$("#wf-price").value||0,cost:+$("#wf-cost").value||0,vat:+$("#wf-vat").value||0,
-      start:$("#wf-start").value?new Date($("#wf-start").value).getTime():null,end:$("#wf-end").value?new Date($("#wf-end").value).getTime():null};
+      start:$("#wf-start").value?new Date($("#wf-start").value).getTime():null,end:$("#wf-end").value?new Date($("#wf-end").value).getTime():null,
+      deps:[...$("#wf-deps").selectedOptions].map(o=>o.value)};
     if(e){Object.assign(e,o);}else{db.works.push(Object.assign({id:uid("w"),project:curProject().id,created:now()},o));}
     save();closeModal();renderEstimate();toast("Сохранено");
   };
@@ -2047,49 +2084,146 @@ const MON=["янв","фев","мар","апр","май","июн","июл","ав�
 function firstOfMonth(ts){const d=new Date(ts);return new Date(d.getFullYear(),d.getMonth(),1).getTime()}
 function nextMonth(ts){const d=new Date(ts);return new Date(d.getFullYear(),d.getMonth()+1,1).getTime()}
 function monLabel(ts){const d=new Date(ts);return MON[d.getMonth()]+" '"+String(d.getFullYear()).slice(2)}
-function renderGantt(el,items,labelHead,emptyMsg){
+function ganttTicks(min,maxEnd,scale){
+  const ticks=[];
+  if(scale==="week"){
+    const d=new Date(min);const off=(d.getDay()+6)%7;let t=new Date(d.getFullYear(),d.getMonth(),d.getDate()-off).getTime();
+    const s=t;while(t<maxEnd){const n=t+7*DAY;ticks.push({t,n,l:new Date(t).toLocaleDateString("ru-RU",{day:"2-digit",month:"2-digit"})});t=n;}
+    return {start:s,ticks};
+  }
+  if(scale==="quarter"){
+    const dm=new Date(min);let t=new Date(dm.getFullYear(),Math.floor(dm.getMonth()/3)*3,1).getTime();const s=t;
+    while(t<maxEnd){const dd=new Date(t);const n=new Date(dd.getFullYear(),dd.getMonth()+3,1).getTime();ticks.push({t,n,l:"Q"+(Math.floor(dd.getMonth()/3)+1)+" '"+String(dd.getFullYear()).slice(2)});t=n;}
+    return {start:s,ticks};
+  }
+  let t=firstOfMonth(min);const s=t;while(t<maxEnd){const n=nextMonth(t);ticks.push({t,n,l:monLabel(t)});t=n;}
+  return {start:s,ticks};
+}
+function expectedPct(w){if(!(w.start&&w.end))return null;const n=now();if(n<=w.start)return 0;if(n>=w.end)return 100;return (n-w.start)/(w.end-w.start)*100;}
+function computeCritical(works){
+  const byId={};works.forEach(w=>byId[w.id]=w);
+  const dur=w=>Math.max(DAY,(w.end||0)-(w.start||0));
+  const esMemo={},prog={};
+  function ES(w){if(esMemo[w.id]!=null)return esMemo[w.id];if(prog[w.id])return 0;prog[w.id]=1;let es=0;(w.deps||[]).forEach(d=>{const pw=byId[d];if(pw)es=Math.max(es,ES(pw)+dur(pw));});esMemo[w.id]=es;return es;}
+  works.forEach(ES);const EF=w=>ES(w)+dur(w);const projEnd=works.length?Math.max(...works.map(EF)):0;
+  const succ={};works.forEach(w=>(w.deps||[]).forEach(d=>{(succ[d]=succ[d]||[]).push(w.id);}));
+  const lfMemo={},prog2={};
+  function LF(w){if(lfMemo[w.id]!=null)return lfMemo[w.id];if(prog2[w.id])return projEnd;prog2[w.id]=1;const ss=succ[w.id]||[];let lf=ss.length?Infinity:projEnd;ss.forEach(sid=>{const sw=byId[sid];if(sw)lf=Math.min(lf,LF(sw)-dur(sw));});lfMemo[w.id]=(lf===Infinity?projEnd:lf);return lfMemo[w.id];}
+  works.forEach(LF);const crit=new Set();
+  works.forEach(w=>{const fl=LF(w)-EF(w);if(Math.abs(fl)<=DAY&&((w.deps&&w.deps.length)||(succ[w.id]&&succ[w.id].length)))crit.add(w.id);});
+  return crit;
+}
+function renderGantt(el,items,opts){
+  opts=opts||{};const scale=opts.scale||"month";
   const wd=items.filter(i=>i.start&&i.end&&i.end>=i.start);
-  if(!wd.length){el.innerHTML=emptyBlock(emptyMsg||"Нет данных с датами");return;}
-  const min=firstOfMonth(Math.min(...wd.map(i=>i.start)));
-  const maxEnd=nextMonth(firstOfMonth(Math.max(...wd.map(i=>i.end))));
-  const range=(maxEnd-min)||DAY;
-  const months=[];let t=min;while(t<maxEnd){const n=nextMonth(t);months.push({l:monLabel(t),left:(t-min)/range*100,w:(Math.min(n,maxEnd)-t)/range*100});t=n;}
-  const grid=months.map(m=>`<i style="left:${m.left}%"></i>`).join("");
-  const monthHead=months.map(m=>`<div class="g-month" style="left:${m.left}%;width:${m.w}%">${m.l}</div>`).join("");
+  if(!wd.length){el.innerHTML=emptyBlock(opts.empty||"Нет данных с датами");return;}
+  const tk=ganttTicks(Math.min(...wd.map(i=>i.start)),Math.max(...wd.map(i=>i.end))+DAY,scale);
+  const min=tk.start,ticks=tk.ticks,maxEnd=ticks[ticks.length-1].n,range=(maxEnd-min)||DAY;
+  const grid=ticks.map(k=>`<i style="left:${(k.t-min)/range*100}%"></i>`).join("");
+  const head=ticks.map(k=>`<div class="g-month" style="left:${(k.t-min)/range*100}%;width:${(k.n-k.t)/range*100}%">${esc(k.l)}</div>`).join("");
   const nowP=(now()-min)/range*100;
-  const today=(now()>=min&&now()<=maxEnd)?`<div class="g-today" style="left:${nowP}%"></div>`:"";
+  const today=opts.today!==false&&now()>=min&&now()<=maxEnd?`<div class="g-today" style="left:${nowP}%"></div>`:"";
   const groups={};wd.forEach(i=>{(groups[i.group||""]=groups[i.group||""]||[]).push(i);});
   let rows="";
   Object.keys(groups).forEach(g=>{
     if(g)rows+=`<div class="g-grouphd">${esc(g)}</div>`;
     groups[g].forEach(i=>{
-      const left=(i.start-min)/range*100,w=Math.max(1,(i.end-i.start)/range*100);
+      const left=(i.start-min)/range*100,w=Math.max(0.8,(i.end-i.start)/range*100);
+      const cls=["g-bar",i.critical?"crit":"",i.behind?"behind":"",(opts.onChange&&i.draggable!==false)?"drag":""].filter(Boolean).join(" ");
+      const exp=i.expectedPct!=null?`<div class="g-exp" style="left:${Math.max(0,Math.min(100,i.expectedPct))}%"></div>`:"";
+      const handles=(opts.onChange&&i.draggable!==false)?`<div class="g-h l"></div><div class="g-h r"></div>`:"";
+      const markers=(i.markers||[]).map(m=>`<div class="g-mk" style="left:${(m.at-min)/range*100}%;background:${m.color||'var(--accent)'}" title="${esc(m.title||'')}"></div>`).join("");
       rows+=`<div class="g-row"><div class="g-lbl"><div>${esc(i.label)}</div>${i.sub?`<div class="sub">${esc(i.sub)}</div>`:""}</div>
         <div class="g-track"><div class="g-grid">${grid}</div>${today}
-          <div class="g-bar${i.danger?' danger':''}" style="left:${left}%;width:${w}%" title="${esc(i.title||"")}"><div class="fill" style="width:${i.pct==null?100:Math.max(0,Math.min(100,i.pct))}%;background:${i.barColor||'var(--progress)'}"></div><span class="blab">${esc(i.blab||"")}</span></div>
+          <div class="${cls}" data-id="${i.id||''}" data-s="${i.start}" data-e="${i.end}" style="left:${left}%;width:${w}%" title="${esc(i.title||"")}"><div class="fill" style="width:${i.pct==null?100:Math.max(0,Math.min(100,i.pct))}%;background:${i.barColor||'var(--progress)'}"></div>${exp}<span class="blab">${esc(i.blab||"")}</span>${handles}</div>
+          ${markers}
         </div></div>`;
     });
   });
-  const minW=230+months.length*72;
-  el.innerHTML=`<div class="gantt"><div style="min-width:${minW}px">
-    <div class="g-head"><div class="g-lbl" style="padding:9px 12px;font-size:11px;color:var(--muted);text-transform:uppercase">${esc(labelHead||"")}</div><div class="g-months">${monthHead}</div></div>
+  const perTick={week:38,month:74,quarter:120}[scale]||74;
+  const minW=230+ticks.length*perTick;
+  el.innerHTML=`<div class="gantt"><div class="g-inner" style="min-width:${minW}px">
+    <div class="g-head"><div class="g-lbl" style="padding:9px 12px;font-size:11px;color:var(--muted);text-transform:uppercase">${esc(opts.labelHead||"")}</div><div class="g-months">${head}</div></div>
     ${rows}
+    <svg class="g-deps"></svg>
   </div></div>`;
+  const inner=el.querySelector(".g-inner");
+  if(opts.deps)requestAnimationFrame(()=>drawDeps(inner,wd));
+  if(opts.onChange)attachGanttDrag(inner,min,range,opts.onChange);
+}
+function drawDeps(inner,items){
+  const svg=inner.querySelector(".g-deps");if(!svg)return;
+  const bars={};inner.querySelectorAll(".g-bar[data-id]").forEach(b=>{if(b.dataset.id)bars[b.dataset.id]=b;});
+  const ir=inner.getBoundingClientRect();
+  svg.style.width=inner.scrollWidth+"px";svg.style.height=inner.scrollHeight+"px";
+  let paths="";
+  items.forEach(i=>{(i.deps||[]).forEach(pid=>{
+    const pb=bars[pid],cb=bars[i.id];if(!pb||!cb)return;
+    const pr=pb.getBoundingClientRect(),cr=cb.getBoundingClientRect();
+    const x1=pr.right-ir.left,y1=pr.top-ir.top+pr.height/2,x2=cr.left-ir.left,y2=cr.top-ir.top+cr.height/2;
+    paths+=`<path d="M${x1} ${y1} H${x1+9} V${y2} H${x2}" fill="none" stroke="var(--muted)" stroke-width="1.5" marker-end="url(#garr)"/>`;
+  });});
+  svg.innerHTML=`<defs><marker id="garr" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0 0 L6 3 L0 6 z" fill="var(--muted)"/></marker></defs>${paths}`;
+}
+function attachGanttDrag(inner,min,range,onChange){
+  inner.querySelectorAll(".g-bar.drag").forEach(bar=>{
+    const track=bar.parentElement;const id=bar.dataset.id;
+    const start=(e,mode)=>{
+      e.preventDefault();e.stopPropagation();
+      const tw=track.getBoundingClientRect().width;const msPerPx=range/tw;const sx=e.clientX;
+      const os=+bar.dataset.s,oe=+bar.dataset.e;let ns=os,ne=oe;
+      const move=ev=>{const dd=Math.round((ev.clientX-sx)*msPerPx/DAY);
+        if(mode==="move"){ns=os+dd*DAY;ne=oe+dd*DAY;}
+        else if(mode==="l"){ns=Math.min(oe-DAY,os+dd*DAY);}
+        else{ne=Math.max(os+DAY,oe+dd*DAY);}
+        bar.style.left=((ns-min)/range*100)+"%";bar.style.width=(Math.max(0.8,(ne-ns)/range*100))+"%";};
+      const up=()=>{document.removeEventListener("mousemove",move);document.removeEventListener("mouseup",up);if(ns!==os||ne!==oe)onChange(id,ns,ne);};
+      document.addEventListener("mousemove",move);document.addEventListener("mouseup",up);
+    };
+    bar.addEventListener("mousedown",e=>{if(e.target.classList.contains("g-h"))return;start(e,"move");});
+    const hl=bar.querySelector(".g-h.l"),hr=bar.querySelector(".g-h.r");
+    if(hl)hl.addEventListener("mousedown",e=>start(e,"l"));
+    if(hr)hr.addEventListener("mousedown",e=>start(e,"r"));
+  });
 }
 function renderSchedule(){
   const p=curProject();if(!p)return;
   const sel=$("#gqSection");const cur=sel.value;
   sel.innerHTML=`<option value="">Все разделы</option>`+SECTIONS.map(s=>`<option value="${s.code}">${s.code} — ${s.name}</option>`).join("");sel.value=cur;
-  let ws=worksOf(p.id);if(sel.value)ws=ws.filter(w=>w.section===sel.value);
+  const all=worksOf(p.id);
+  const crit=computeCritical(all.filter(w=>w.start&&w.end));
+  let ws=all;if(sel.value)ws=ws.filter(w=>w.section===sel.value);
   ws=[...ws].sort((a,b)=>(a.section||"").localeCompare(b.section||"")||(a.start||0)-(b.start||0));
-  const items=ws.map(w=>{const dp=wDonePct(w);return {
-    group:w.section+" — "+sectionName(w.section),label:w.name,
-    sub:(w.qty||0).toLocaleString("ru-RU")+" "+w.unit+" · "+fmtMoney(wRev(w)),
-    start:w.start,end:w.end,pct:dp,barColor:dp>=100?'var(--done)':'var(--progress)',blab:dp.toFixed(0)+"%",
-    title:(w.start?dfmt(w.start):"")+" — "+(w.end?dfmt(w.end):"")};});
-  renderGantt($("#scheduleGantt"),items,"Работа","Нет работ с датами — задайте даты начала/окончания в позиции сметы");
-  const nod=worksOf(p.id).filter(w=>!(w.start&&w.end)).length;
-  if(nod)$("#scheduleGantt").insertAdjacentHTML("beforeend",`<div class="g-legend">⚠ Позиций без дат: ${nod} — укажите даты в смете, чтобы они попали в график.</div>`);
+  // маркеры поставок, привязанных к работе
+  const purchByWork={};purchasesOf(p.id).forEach(x=>{if(x.workId){(purchByWork[x.workId]=purchByWork[x.workId]||[]).push(x);}});
+  const items=ws.map(w=>{const dp=wDonePct(w);const exp=expectedPct(w);
+    const behind=exp!=null&&dp<exp-5&&dp<100;
+    const markers=(purchByWork[w.id]||[]).map(x=>{const d=x.plannedDelivery||x.delivered;if(!d)return null;
+      const late=w.start&&d>w.start;return {at:d,color:late?'var(--danger)':'var(--done)',title:"📦 "+x.item+" — поставка "+fmtDate(d)+(late?" (позже начала работ!)":"")};}).filter(Boolean);
+    return {id:w.id,group:w.section+" — "+sectionName(w.section),label:(crit.has(w.id)?"★ ":"")+w.name,
+      sub:(w.qty||0).toLocaleString("ru-RU")+" "+w.unit+" · "+fmtMoney(wRev(w))+(behind?" · ⚠ отставание":""),
+      start:w.start,end:w.end,pct:dp,expectedPct:exp,behind,critical:crit.has(w.id),deps:w.deps||[],markers,draggable:true,
+      barColor:dp>=100?'var(--done)':'var(--progress)',blab:dp.toFixed(0)+"%",
+      title:(w.start?dfmt(w.start):"")+" — "+(w.end?dfmt(w.end):"")+(exp!=null?" · план "+exp.toFixed(0)+"% / факт "+dp.toFixed(0)+"%":"")};});
+  // план/факт статистика (по деньгам)
+  const wdd=all.filter(w=>w.start&&w.end);
+  const rev=wdd.reduce((s,w)=>s+wRev(w),0);
+  const planV=wdd.reduce((s,w)=>s+wRev(w)*(expectedPct(w)||0)/100,0);
+  const factV=wdd.reduce((s,w)=>s+wDoneVal(w),0);
+  const behindN=wdd.filter(w=>{const e=expectedPct(w);return e!=null&&wDonePct(w)<e-5&&wDonePct(w)<100;}).length;
+  const dev=planV?(factV-planV)/planV*100:0;
+  $("#schedStats").innerHTML=`
+    ${stat((rev?planV/rev*100:0).toFixed(0)+"%","План на сегодня","#38b6ff",rev?planV/rev*100:0)}
+    ${stat((rev?factV/rev*100:0).toFixed(0)+"%","Факт выполнено","#4fe0a0",rev?factV/rev*100:0)}
+    ${stat((dev>=0?"+":"")+dev.toFixed(0)+"%","Отклонение факт/план",dev<0?"#ff6b7a":"#4fe0a0",Math.min(100,Math.abs(dev)))}
+    ${stat(behindN,"Работ с отставанием",behindN?"#ff6b7a":"#6f92b3",behindN?100:6)}
+    ${stat(crit.size,"На критическом пути","#c08bff",crit.size?100:6)}`;
+  renderGantt($("#scheduleGantt"),items,{labelHead:"Работа",scale:ui.schedScale||"month",deps:true,
+    empty:"Нет работ с датами — задайте даты начала/окончания в позиции сметы",
+    onChange:(id,ns,ne)=>{const w=db.works.find(x=>x.id===id);if(w){w.start=ns;w.end=ne;save();renderSchedule();}}});
+  const nod=all.filter(w=>!(w.start&&w.end)).length;
+  if(nod)$("#scheduleGantt").insertAdjacentHTML("beforeend",`<div class="g-legend">⚠ Позиций без дат: ${nod} — укажите даты в смете. ★ — критический путь · пунктир на полосе = плановый прогресс · полосу можно тянуть мышью.</div>`);
+  else $("#scheduleGantt").insertAdjacentHTML("beforeend",`<div class="g-legend">★ — критический путь · пунктир на полосе = плановый прогресс · полосу можно тянуть мышью (сдвиг/растяжение).</div>`);
 }
 function exportScheduleCSV(){
   const p=curProject();const rows=[["Раздел","Наименование","Начало","Окончание","Объём","Ед.","Выполнено %"]];
@@ -2102,12 +2236,18 @@ function renderPurchGantt(){
   const items=list.map(x=>{
     const end=x.plannedDelivery||x.delivered;const received=["delivered","paid"].includes(x.status);
     const overdue=!!(end&&end<now()&&!received);
-    return {group:PCAT[x.cat]||"Прочее",label:x.item,sub:supplierName(x.supplier)+" · "+fmtMoney(purchTotal(x)),
-      start:x.created,end,pct:100,barColor:overdue?'var(--danger)':(received?'var(--done)':'var(--progress)'),danger:overdue,
-      blab:end?fmtDate(end):"",title:PSTATUS[x.status].l+(overdue?" · просрочено":"")};});
-  renderGantt($("#purchGantt"),items,"Позиция","Нет поставок с датой — укажите «Плановая поставка» в позиции закупки");
+    const w=x.workId?db.works.find(z=>z.id===x.workId):null;
+    const lateForWork=!!(w&&w.start&&end&&end>w.start&&!received);
+    const dngr=overdue||lateForWork;
+    return {group:PCAT[x.cat]||"Прочее",label:x.item,
+      sub:supplierName(x.supplier)+" · "+fmtMoney(purchTotal(x))+(w?" · ↔ "+w.name:""),
+      start:x.created,end,pct:100,barColor:dngr?'var(--danger)':(received?'var(--done)':'var(--progress)'),behind:dngr,
+      blab:end?fmtDate(end):"",title:PSTATUS[x.status].l+(overdue?" · просрочено":"")+(lateForWork?" · позже начала работ «"+w.name+"»":"")};});
+  renderGantt($("#purchGantt"),items,{labelHead:"Позиция",scale:ui.purchScale||"month",
+    empty:"Нет поставок с датой — укажите «Плановая поставка» в позиции закупки"});
   const nod=list.filter(x=>!(x.plannedDelivery||x.delivered)).length;
-  if(nod)$("#purchGantt").insertAdjacentHTML("beforeend",`<div class="g-legend">⚠ Позиций без даты поставки: ${nod}.</div>`);
+  if(nod)$("#purchGantt").insertAdjacentHTML("beforeend",`<div class="g-legend">⚠ Позиций без даты поставки: ${nod}. ↔ — связь с работой; красным — поставка позже начала работ.</div>`);
+  else $("#purchGantt").insertAdjacentHTML("beforeend",`<div class="g-legend">↔ — связь с работой; красным — просрочка или поставка позже начала связанной работы.</div>`);
 }
 $("#gqSection").addEventListener("change",renderSchedule);
 $("#btnSchedCsv").onclick=exportScheduleCSV;
@@ -2118,6 +2258,8 @@ $$("#view-purchases .plan-tabs button").forEach(b=>b.onclick=()=>{
   $("#purchGanttTab").classList.toggle("hidden",t!=="gantt");
   if(t==="gantt")renderPurchGantt();
 });
+$$("#schedScale button").forEach(b=>b.onclick=()=>{ui.schedScale=b.dataset.sc;$$("#schedScale button").forEach(x=>x.classList.toggle("on",x===b));renderSchedule();});
+$$("#purchScale button").forEach(b=>b.onclick=()=>{ui.purchScale=b.dataset.sc;$$("#purchScale button").forEach(x=>x.classList.toggle("on",x===b));renderPurchGantt();});
 
 /* ============================ Старт ============================ */
 renderProjects();
