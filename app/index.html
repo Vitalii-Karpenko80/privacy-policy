@@ -270,6 +270,7 @@
       <button class="navitem" data-view="acts"><span class="ic">📃</span> Акты и КС <span class="badge" id="nb-acts">0</span></button>
       <button class="navitem" data-view="purchases"><span class="ic">🧾</span> Закупки <span class="badge" id="nb-purch">0</span></button>
       <button class="navitem" data-view="tenders"><span class="ic">📢</span> Тендеры <span class="badge" id="nb-tend">0</span></button>
+      <button class="navitem" data-view="contracts"><span class="ic">📑</span> Договоры <span class="badge" id="nb-contr">0</span></button>
       <button class="navitem" data-view="team"><span class="ic">👥</span> Команда</button>
       <button class="navitem" data-view="history"><span class="ic">🕘</span> История проектов</button>
       <button class="navitem" data-view="integrations"><span class="ic">🔌</span> Интеграции</button>
@@ -296,6 +297,11 @@
       <!-- Dashboard -->
       <section class="view active" id="view-dashboard">
         <div class="stat-grid" id="statGrid"></div>
+        <div class="panel" style="margin-bottom:22px">
+          <div class="ph"><h3>Финансы и разбивка по проекту</h3><div style="flex:1"></div><button class="btn ghost sm" id="btnEditBudget">Бюджет проекта</button></div>
+          <div class="stat-grid" id="finStats" style="margin:16px 18px"></div>
+          <div id="projBreak" style="padding:0 6px 8px"></div>
+        </div>
         <div class="cols">
           <div class="panel">
             <div class="ph"><h3>Последние задачи</h3><div class="spacer" style="flex:1"></div><button class="btn ghost sm" data-goto="tickets">Все задачи →</button></div>
@@ -385,9 +391,10 @@
       <!-- Purchases -->
       <section class="view" id="view-purchases">
         <div class="stat-grid" id="purchStats"></div>
-        <div class="plan-tabs" style="max-width:420px;margin-bottom:16px">
+        <div class="plan-tabs" style="max-width:560px;margin-bottom:16px">
           <button class="on" data-ptab2="list">Список</button>
           <button data-ptab2="gantt">График поставок</button>
+          <button data-ptab2="stock">Склад · остатки</button>
         </div>
         <div id="purchListTab">
           <div class="filters">
@@ -418,6 +425,18 @@
             <div id="purchGantt"></div>
           </div>
         </div>
+        <div id="purchStockTab" class="hidden">
+          <div class="stat-grid" id="stockStats"></div>
+          <div class="filters">
+            <input id="skSearch" placeholder="Поиск по складу…">
+            <button class="btn sm" id="btnIssue">－ Списать материал</button>
+            <button class="btn ghost sm" id="btnStockCsv">⭳ Остатки в CSV</button>
+          </div>
+          <div class="panel">
+            <div class="list-hd"><span style="flex:1">Материал</span><span style="width:110px;text-align:right">Поступило</span><span style="width:110px;text-align:right">Списано</span><span style="width:110px;text-align:right">Остаток</span><span style="width:140px;text-align:right;padding-right:12px">Стоимость остатка</span></div>
+            <div id="stockList" class="tlist"></div>
+          </div>
+        </div>
       </section>
 
       <!-- Tenders -->
@@ -428,6 +447,31 @@
           <button class="btn sm" id="btnNewTender">＋ Тендер</button>
         </div>
         <div id="tenderGrid" class="grid-cards"></div>
+      </section>
+
+      <!-- Contracts & specifications -->
+      <section class="view" id="view-contracts">
+        <div class="plan-tabs" style="max-width:420px;margin-bottom:16px">
+          <button class="on" data-ctab="contracts">Договоры</button>
+          <button data-ctab="buildings">Здания / объекты</button>
+        </div>
+        <div id="contractsTab">
+          <div class="stat-grid" id="contrStats"></div>
+          <div class="filters">
+            <input id="cqSearch" placeholder="Поиск: № или контрагент…">
+            <select id="cqBuilding"><option value="">Все здания</option></select>
+            <select id="cqType"><option value="">Все типы</option></select>
+            <button class="btn sm" id="btnNewContract">＋ Договор</button>
+          </div>
+          <div class="panel">
+            <div class="list-hd"><span style="width:150px">№ / тип</span><span style="flex:1">Контрагент</span><span style="width:160px">Здание</span><span style="width:150px;text-align:right;padding-right:12px">Сумма</span><span style="width:110px">Статус</span></div>
+            <div id="contractList" class="tlist"></div>
+          </div>
+        </div>
+        <div id="buildingsTab" class="hidden">
+          <div class="filters"><button class="btn sm" id="btnNewBuilding">＋ Здание</button></div>
+          <div id="buildingGrid" class="grid-cards"></div>
+        </div>
       </section>
 
       <!-- History -->
@@ -589,6 +633,8 @@ const TSTATUS={
   awarded:{l:"Победитель выбран",cls:"st-done",c:"#4fe0a0"},
   closed:{l:"Закрыт",cls:"st-review",c:"#c08bff"}
 };
+const CONTRACT_TYPES=["Генподряд","Субподряд","Поставка","Услуги","Аренда","Прочее"];
+const CSTATUS={draft:{l:"Черновик",cls:"st-closed",c:"#6f92b3"},active:{l:"Действует",cls:"st-done",c:"#4fe0a0"},closed:{l:"Закрыт",cls:"st-review",c:"#c08bff"}};
 const INTEGRATIONS=[
   {id:"1c",name:"1С:Бухгалтерия",color:"#f7d417",desc:"Обмен документами поступления и счетами (выгрузка XML/CommerceML).",fields:["Адрес базы / публикации","Логин","Пароль"]},
   {id:"1c_unf",name:"1С:УНФ",color:"#f7a417",desc:"Управление небольшой фирмой: заказы поставщикам, оплаты.",fields:["Адрес базы","Токен"]},
@@ -689,7 +735,11 @@ function migrate(d){
   d.works=d.works||[];
   d.acts=d.acts||[];
   d.journal=d.journal||[];
+  d.buildings=d.buildings||[];
+  d.contracts=d.contracts||[];
+  d.issues=d.issues||[];
   d.org=d.org||{name:"",inn:"",kpp:""};
+  (d.projects||[]).forEach(pr=>{if(pr.budget==null)pr.budget=0;});
   if(!d.integrations){d.integrations={};INTEGRATIONS.forEach(i=>d.integrations[i.id]={enabled:false,cfg:{}});}
   (d.projects||[]).forEach(pr=>{if(!pr.vatMode)pr.vatMode="osno";});
   return d;
@@ -703,7 +753,33 @@ function tendersOf(pid){return db.tenders.filter(t=>t.project===pid)}
 function worksOf(pid){return db.works.filter(w=>w.project===pid)}
 function actsOf(pid){return db.acts.filter(a=>a.project===pid)}
 function journalOf(pid){return db.journal.filter(j=>j.project===pid)}
+function buildingsOf(pid){return db.buildings.filter(b=>b.project===pid)}
+function contractsOf(pid){return db.contracts.filter(c=>c.project===pid)}
+function issuesOf(pid){return db.issues.filter(i=>i.project===pid)}
+function buildingName(id){const b=db.buildings.find(x=>x.id===id);return b?b.name:"— без привязки —"}
 function supplierName(id){const s=db.suppliers.find(x=>x.id===id);return s?s.name:(id||"—")}
+function contractTotal(c){return (c.specs||[]).reduce((s,r)=>s+(r.qty||0)*(r.price||0),0)||(c.amount||0)}
+/* Финансы проекта: смета, себестоимость, факт затрат, бюджет, превышения */
+function projFin(pid){
+  const p=projById(pid);
+  const smeta=worksOf(pid).reduce((s,w)=>s+wRev(w),0);
+  const costPlan=worksOf(pid).reduce((s,w)=>s+wCost(w),0);
+  const factCost=purchasesOf(pid).filter(x=>x.status!=="cancelled").reduce((s,x)=>s+purchTotal(x),0);
+  const doneVal=worksOf(pid).reduce((s,w)=>s+wDoneVal(w),0);
+  const budget=(p&&p.budget)||costPlan; // если бюджет не задан — план себестоимости
+  return {smeta,costPlan,factCost,doneVal,budget,
+    budgetOver:factCost-budget, smetaOver:factCost-costPlan,
+    profitPlan:smeta-costPlan, budgetSet:!!(p&&p.budget)};
+}
+/* Склад: поступления (закупки) − списания = остаток, по позициям */
+function stockOf(pid){
+  const map={};
+  purchasesOf(pid).filter(x=>["delivered","paid"].includes(x.status)).forEach(x=>{
+    const k=x.item+"|"+(x.unit||"");const m=map[k]=map[k]||{item:x.item,unit:x.unit||"",recv:0,val:0,issued:0};
+    m.recv+=x.qty||0;m.val+=(x.qty||0)*(x.price||0);});
+  issuesOf(pid).forEach(i=>{const k=i.item+"|"+(i.unit||"");const m=map[k]=map[k]||{item:i.item,unit:i.unit||"",recv:0,val:0,issued:0};m.issued+=i.qty||0;});
+  return Object.values(map).map(m=>{const avg=m.recv?m.val/m.recv:0;const rest=m.recv-m.issued;return {...m,avg,rest,restVal:rest*avg};});
+}
 
 /* ============================ Демо-данные ============================ */
 function seed(){
@@ -800,6 +876,28 @@ function seed(){
   // связь закупок с работами
   purchases[3].workId=works[9].id; // кабель → электромонтаж
   purchases[4].workId=works[7].id; // монтаж отопления (закупка) → работа ОВ
+
+  // Здания (объекты)
+  const b1=uid("bld"),b2=uid("bld");
+  const buildings=[
+    {id:b1,project:pid,name:"Корпус 3 (жилой)",code:"К3",area:8600,floors:17},
+    {id:b2,project:pid,name:"Паркинг",code:"ПРК",area:3200,floors:2}
+  ];
+  // Договоры и спецификации
+  const contracts=[
+    {id:uid("dg"),project:pid,number:"12-СМР/2026",date:now()-1.1e10,type:"Генподряд",counterparty:"ООО «Инвест-Девелопмент»",inn:"7700112233",buildingId:b1,status:"active",
+     specs:[{id:uid("sp"),name:"Монолитный каркас",unit:"м³",qty:1460,price:10000},{id:uid("sp"),name:"Кладочные работы",unit:"м³",qty:540,price:6400},{id:uid("sp"),name:"Отделочные работы",unit:"м²",qty:8600,price:640}],created:now()-1.1e10},
+    {id:uid("dg"),project:pid,number:"П-45/2026",date:now()-4e9,type:"Поставка",counterparty:"ООО «БетонТорг»",inn:"7809876543",buildingId:b1,status:"active",
+     specs:[{id:uid("sp"),name:"Бетон B25 (М350)",unit:"м³",qty:45,price:5400}],created:now()-4e9},
+    {id:uid("dg"),project:pid,number:"СУБ-7/2026",date:now()-2e9,type:"Субподряд",counterparty:"ООО «ЭлектроСнаб»",inn:"5024001122",buildingId:b2,status:"draft",
+     specs:[{id:uid("sp"),name:"Электромонтажные работы паркинга",unit:"компл",qty:1,price:1800000}],created:now()-2e9}
+  ];
+  // Списания со склада (демо)
+  const issues=[
+    {id:uid("is"),project:pid,item:"Кирпич керамический М-150",unit:"шт",qty:8000,date:now()-3e8,note:"Кладка 1-5 этажи"},
+    {id:uid("is"),project:pid,item:"Бетон B25 (М350)",unit:"м³",qty:30,date:now()-1e8,note:"Перекрытие 6 этажа"},
+    {id:uid("is"),project:pid,item:"Гипсокартон КНАУФ 12.5мм",unit:"шт",qty:50,date:now()-4e7,note:"Перегородки 2 этаж"}
+  ];
   // Акт КС-2 (демо)
   const acts=[{id:uid("act"),project:pid,number:"1",kind:"КС-2",date:now()-6e8,from:now()-9e8,to:now()-6e8,
     lines:[
@@ -816,11 +914,11 @@ function seed(){
 
   const mainProject={id:pid,name:"ЖК «Северный», корпус 3",address:"г. Пример, ул. Строителей, 3",members,created:now()-1.1e10,
     investor:"ООО «Инвест-Девелопмент»",customer:"ООО «Инвест-Девелопмент»",contractor:"ООО «СтройГрупп»",
-    contractNo:"12-СМР/2026",contractDate:now()-1.1e10,vatMode:"osno"};
+    contractNo:"12-СМР/2026",contractDate:now()-1.1e10,vatMode:"osno",budget:36000000};
 
   return {currentProject:pid,seq:6,
     projects:[mainProject,archProject],
-    plans:[plan1],tickets,suppliers,purchases,tenders,works,acts,journal,org,integrations};
+    plans:[plan1],tickets,suppliers,purchases,tenders,works,acts,journal,buildings,contracts,issues,org,integrations};
 }
 
 /* ============================ Утилиты рендера ============================ */
@@ -846,7 +944,7 @@ function setView(v){
   ui.view=v;
   $$(".navitem").forEach(b=>b.classList.toggle("active",b.dataset.view===v));
   $$(".view").forEach(s=>s.classList.toggle("active",s.id==="view-"+v));
-  const titles={dashboard:"Обзор",plan:"План",tickets:"Задачи",estimate:"Смета и себестоимость",schedule:"График строительства",acts:"Акты и формы КС",purchases:"Закупки",tenders:"Тендеры",team:"Команда",history:"История проектов",integrations:"Интеграции с бухгалтерией"};
+  const titles={dashboard:"Обзор",plan:"План",tickets:"Задачи",estimate:"Смета и себестоимость",schedule:"График строительства",acts:"Акты и формы КС",purchases:"Закупки",tenders:"Тендеры",contracts:"Договоры и спецификации",team:"Команда",history:"История проектов",integrations:"Интеграции с бухгалтерией"};
   $("#viewTitle").textContent=titles[v];
   const p=curProject();
   const orgWide=(v==="history"||v==="integrations");
@@ -857,6 +955,7 @@ function setView(v){
   if(v==="team")renderTeam();
   if(v==="purchases")renderPurchases();
   if(v==="tenders")renderTenders();
+  if(v==="contracts")renderContracts();
   if(v==="estimate")renderEstimate();
   if(v==="schedule")renderSchedule();
   if(v==="acts")renderActs();
@@ -890,7 +989,47 @@ function renderDashboard(){
       <div class="stat bar" style="margin:0;padding:0;border:0;height:6px;background:var(--panel-2)"><i style="width:${w}%;background:${STATUS[s].c}"></i></div>
     </div>`;
   }).join("");
+  renderProjectFinance(p);
   updateBadges();
+}
+function renderProjectFinance(p){
+  const f=projFin(p.id);
+  const budgetUsed=f.budget?f.factCost/f.budget*100:0;
+  $("#finStats").innerHTML=`
+    ${stat(fmtMoney(f.budget),"Бюджет затрат"+(f.budgetSet?"":" (=план)"),"#38b6ff",100)}
+    ${stat(fmtMoney(f.factCost),"Факт затрат (освоено "+budgetUsed.toFixed(0)+"%)","#ffb74d",budgetUsed)}
+    ${stat((f.budgetOver>0?"+":"")+fmtMoney(f.budgetOver),"Превышение бюджета",f.budgetOver>0?"#ff6b7a":"#4fe0a0",f.budget?Math.min(100,Math.abs(f.budgetOver)/f.budget*100):6)}
+    ${stat((f.smetaOver>0?"+":"")+fmtMoney(f.smetaOver),"Превышение сметы",f.smetaOver>0?"#ff6b7a":"#4fe0a0",f.costPlan?Math.min(100,Math.abs(f.smetaOver)/f.costPlan*100):6)}`;
+  // разбивка по проекту
+  const donePct=f.smeta?f.doneVal/f.smeta*100:0;
+  const purch=purchasesOf(p.id).filter(x=>x.status!=="cancelled");
+  const overdue=purch.filter(x=>{const e=x.plannedDelivery||x.delivered;return e&&e<now()&&!["delivered","paid"].includes(x.status);}).length;
+  const stk=stockOf(p.id);const stockVal=stk.reduce((s,m)=>s+Math.max(0,m.restVal),0);
+  const cs=contractsOf(p.id);const contrSum=cs.reduce((s,c)=>s+contractTotal(c),0);
+  const row=(icon,title,metric,pct,color,goto)=>`<div class="trow" data-goto="${goto}">
+    <div class="feed" style="margin:0"><div class="fic" style="width:34px;height:34px">${icon}</div></div>
+    <div class="tmain"><div class="tt">${title}</div><div class="tm">${metric}</div></div>
+    ${pct!=null?`<div style="width:160px"><div class="stat bar" style="margin:0;padding:0;border:0;height:6px;background:var(--panel-2)"><i style="width:${Math.max(2,Math.min(100,pct))}%;background:${color}"></i></div><div style="font-size:11px;color:var(--muted);margin-top:3px;text-align:right">${pct.toFixed(0)}%</div></div>`:`<div style="width:160px"></div>`}
+    <div style="width:20px;color:var(--muted)">→</div>
+  </div>`;
+  $("#projBreak").innerHTML=
+    row("📐","Смета и себестоимость",`Договорная ${fmtMoney(f.smeta)} · прибыль ${fmtMoney(f.profitPlan)} · рент. ${(f.smeta?f.profitPlan/f.smeta*100:0).toFixed(0)}%`,f.smeta?f.costPlan/f.smeta*100:0,"#c08bff","estimate")+
+    row("📅","График строительства",`Выполнено ${fmtMoney(f.doneVal)} из ${fmtMoney(f.smeta)}`,donePct,"#4fe0a0","schedule")+
+    row("🧾","Закупки и поставки",`Бюджет закупок ${fmtMoney(f.factCost)}${overdue?" · ⚠ просрочек: "+overdue:""} · склад ${fmtMoney(stockVal)}`,f.factCost?purch.filter(x=>x.status==="paid").reduce((s,x)=>s+purchTotal(x),0)/f.factCost*100:0,"#4dc3ff","purchases")+
+    row("📑","Договоры и спецификации",`${cs.length} шт · на сумму ${fmtMoney(contrSum)}`,null,"#38b6ff","contracts");
+  $$("#projBreak .trow").forEach(r=>r.onclick=()=>setView(r.dataset.goto));
+}
+function openBudgetForm(){
+  const p=curProject();
+  showModal(`
+    <div class="mh"><h3>Бюджет проекта</h3><button class="x" onclick="closeModal()">×</button></div>
+    <div class="mb">
+      <div class="field"><label>Плановый бюджет затрат, ₽</label><input type="number" id="bd-val" value="${p.budget||0}" min="0" step="any"></div>
+      <div class="small" style="color:var(--muted);font-size:12px">Факт затрат (сумма закупок) сравнивается с бюджетом. Если бюджет не задан — за базу берётся плановая себестоимость по смете.</div>
+    </div>
+    <div class="mf"><div class="spacer"></div><button class="btn ghost" onclick="closeModal()">Отмена</button><button class="btn" id="bd-save">Сохранить</button></div>
+  `);
+  $("#bd-save").onclick=()=>{p.budget=+$("#bd-val").value||0;save();closeModal();renderDashboard();toast("Бюджет сохранён");};
 }
 function stat(n,l,c,pct){return `<div class="stat"><div class="n" style="color:${c}">${n}</div><div class="l">${l}</div><div class="bar"><i style="width:${Math.max(4,Math.min(100,pct))}%;background:${c}"></i></div></div>`}
 function emptyBlock(t){return `<div class="empty"><div class="big">📋</div><p>${t}</p></div>`}
@@ -1283,6 +1422,7 @@ function updateBadges(){
   $("#nb-tend").textContent=tendersOf(pid).filter(t=>["open","review"].includes(t.status)).length;
   $("#nb-est").textContent=worksOf(pid).length;
   $("#nb-acts").textContent=actsOf(pid).length;
+  $("#nb-contr").textContent=contractsOf(pid).length;
 }
 function refreshAll(){renderDashboard();renderTickets();updateBadges();}
 
@@ -2260,6 +2400,198 @@ $$("#view-purchases .plan-tabs button").forEach(b=>b.onclick=()=>{
 });
 $$("#schedScale button").forEach(b=>b.onclick=()=>{ui.schedScale=b.dataset.sc;$$("#schedScale button").forEach(x=>x.classList.toggle("on",x===b));renderSchedule();});
 $$("#purchScale button").forEach(b=>b.onclick=()=>{ui.purchScale=b.dataset.sc;$$("#purchScale button").forEach(x=>x.classList.toggle("on",x===b));renderPurchGantt();});
+
+/* ============================ СКЛАД / ОСТАТКИ ============================ */
+function renderStock(){
+  const p=curProject();if(!p)return;
+  let list=stockOf(p.id);
+  const q=$("#skSearch").value.toLowerCase().trim();if(q)list=list.filter(m=>m.item.toLowerCase().includes(q));
+  list.sort((a,b)=>b.restVal-a.restVal);
+  const recvVal=stockOf(p.id).reduce((s,m)=>s+m.val,0);
+  const restVal=stockOf(p.id).reduce((s,m)=>s+Math.max(0,m.restVal),0);
+  const neg=stockOf(p.id).filter(m=>m.rest<0).length;
+  $("#stockStats").innerHTML=`
+    ${stat(fmtMoney(recvVal),"Поступило (сумма)","#38b6ff",100)}
+    ${stat(fmtMoney(recvVal-restVal),"Списано (сумма)","#ffb74d",recvVal?(recvVal-restVal)/recvVal*100:0)}
+    ${stat(fmtMoney(restVal),"Остаток на складе","#4fe0a0",recvVal?restVal/recvVal*100:0)}
+    ${stat(stockOf(p.id).length,"Позиций"+(neg?" · ⚠ "+neg:""),neg?"#ff6b7a":"#6f92b3",100)}`;
+  $("#stockList").innerHTML=list.length?list.map(m=>`<div class="trow" style="cursor:default">
+    <div class="tmain" style="flex:1"><div class="tt">${esc(m.item)}</div><div class="tm"><span>${esc(m.unit)}</span><span>ср. цена ${fmtMoney(m.avg)}</span></div></div>
+    <div class="num" style="width:110px;text-align:right">${m.recv.toLocaleString("ru-RU")}</div>
+    <div class="num" style="width:110px;text-align:right;color:var(--muted)">${m.issued.toLocaleString("ru-RU")}</div>
+    <div class="num" style="width:110px;text-align:right;font-weight:700;color:${m.rest<0?'var(--danger)':'var(--text)'}">${m.rest.toLocaleString("ru-RU")}</div>
+    <div class="money" style="width:140px;text-align:right;padding-right:12px">${fmtMoney(m.restVal)}</div>
+  </div>`).join(""):emptyBlock("Склад пуст — материалы поступают из закупок со статусом «Получено»/«Оплачено»");
+  updateBadges();
+}
+function openIssueForm(){
+  const p=curProject();const stk=stockOf(p.id).filter(m=>m.rest>0);
+  if(!stk.length){toast("Нет материалов с положительным остатком");return;}
+  showModal(`
+    <div class="mh"><h3>Списание материала</h3><button class="x" onclick="closeModal()">×</button></div>
+    <div class="mb">
+      <div class="field"><label>Материал</label><select id="is-item">${stk.map((m,i)=>`<option value="${i}">${esc(m.item)} (остаток ${m.rest.toLocaleString("ru-RU")} ${esc(m.unit)})</option>`).join("")}</select></div>
+      <div class="field-row">
+        <div class="field"><label>Количество</label><input type="number" id="is-qty" value="1" min="0" step="any"></div>
+        <div class="field"><label>Дата</label><input type="date" id="is-date" value="${new Date().toISOString().slice(0,10)}"></div>
+      </div>
+      <div class="field"><label>Назначение / куда</label><input id="is-note" placeholder="Например: кладка 3 этаж"></div>
+    </div>
+    <div class="mf"><div class="spacer"></div><button class="btn ghost" onclick="closeModal()">Отмена</button><button class="btn" id="is-save">Списать</button></div>
+  `);
+  $("#is-save").onclick=()=>{const m=stk[+$("#is-item").value];const qty=+$("#is-qty").value||0;
+    if(qty<=0){toast("Укажите количество");return;}
+    db.issues.push({id:uid("is"),project:p.id,item:m.item,unit:m.unit,qty,date:new Date($("#is-date").value).getTime(),note:$("#is-note").value.trim()});
+    save();closeModal();renderStock();toast("Списано");};
+}
+function exportStockCSV(){
+  const p=curProject();const rows=[["Материал","Ед.","Поступило","Списано","Остаток","Ср. цена","Стоимость остатка"]];
+  stockOf(p.id).forEach(m=>rows.push([m.item,m.unit,m.recv,m.issued,m.rest,m.avg.toFixed(2),m.restVal.toFixed(2)]));
+  download("sklad_ostatki_"+dateSlug()+".csv",csv(rows),"text/csv;charset=utf-8");toast("Остатки выгружены");
+}
+
+/* ============================ ДОГОВОРЫ И СПЕЦИФИКАЦИИ ============================ */
+function renderContracts(){
+  const p=curProject();if(!p)return;
+  const bsel=$("#cqBuilding");const bcur=bsel.value;
+  bsel.innerHTML=`<option value="">Все здания</option>`+buildingsOf(p.id).map(b=>`<option value="${b.id}">${esc(b.name)}</option>`).join("")+`<option value="none">— без привязки —</option>`;bsel.value=bcur;
+  const tsel=$("#cqType");if(tsel.options.length<=1)tsel.innerHTML=`<option value="">Все типы</option>`+CONTRACT_TYPES.map(t=>`<option>${t}</option>`).join("");
+  let list=contractsOf(p.id);
+  const q=$("#cqSearch").value.toLowerCase().trim();
+  if(q)list=list.filter(c=>(c.number||"").toLowerCase().includes(q)||(c.counterparty||"").toLowerCase().includes(q));
+  if(bsel.value)list=list.filter(c=>bsel.value==="none"?!c.buildingId:c.buildingId===bsel.value);
+  if(tsel.value)list=list.filter(c=>c.type===tsel.value);
+  list.sort((a,b)=>b.date-a.date);
+  const total=contractsOf(p.id).reduce((s,c)=>s+contractTotal(c),0);
+  const activeN=contractsOf(p.id).filter(c=>c.status==="active").length;
+  $("#contrStats").innerHTML=`
+    ${stat(contractsOf(p.id).length,"Всего договоров","#38b6ff",100)}
+    ${stat(fmtMoney(total),"Сумма договоров","#4fe0a0",100)}
+    ${stat(activeN,"Действующих","#ffb74d",contractsOf(p.id).length?activeN/contractsOf(p.id).length*100:0)}
+    ${stat(buildingsOf(p.id).length,"Зданий/объектов","#c08bff",100)}`;
+  $("#contractList").innerHTML=list.length?list.map(contractRow).join(""):emptyBlock("Нет договоров");
+  $$("#contractList .trow").forEach(r=>r.onclick=()=>openContract(r.dataset.c));
+  updateBadges();
+}
+function contractRow(c){const st=CSTATUS[c.status]||CSTATUS.draft;
+  return `<div class="trow" data-c="${c.id}">
+    <div style="width:150px"><div class="tt" style="font-size:13px">№ ${esc(c.number||"—")}</div><div class="tm"><span>${esc(c.type||"")}</span></div></div>
+    <div class="tmain" style="flex:1"><div class="tt" style="font-weight:500;font-size:13px">${esc(c.counterparty||"—")}</div><div class="tm"><span>${esc(c.inn||"")}</span><span>от ${fmtDate(c.date)}</span><span>позиций: ${(c.specs||[]).length}</span></div></div>
+    <div style="width:160px;color:var(--muted);font-size:12px">🏢 ${esc(buildingName(c.buildingId))}</div>
+    <div class="money" style="width:150px;text-align:right;padding-right:12px">${fmtMoney(contractTotal(c))}</div>
+    <div style="width:110px">${statusChipG(CSTATUS,c.status)}</div>
+  </div>`;
+}
+function openContract(id){
+  const c=db.contracts.find(x=>x.id===id);if(!c)return;const p=curProject();
+  const specs=c.specs||[];const tot=contractTotal(c);
+  showModal(`
+    <div class="mh"><span class="tcode" style="width:auto">№ ${esc(c.number||"")}</span><h3>${esc(c.counterparty||"Договор")}</h3><button class="btn ghost sm" id="c-edit">✎</button><button class="x" onclick="closeModal()">×</button></div>
+    <div class="mb">
+      <div class="det-top">${statusChipG(CSTATUS,c.status)}<span class="chip" style="background:var(--panel-2);color:var(--text)">${esc(c.type||"")}</span><span class="chip" style="background:var(--panel-2);color:var(--text)">🏢 ${esc(buildingName(c.buildingId))}</span></div>
+      <div class="status-picker" id="c-status">${Object.entries(CSTATUS).map(([k,v])=>`<button data-s="${k}" class="${k===c.status?"on":""}" style="${k===c.status?`background:${v.c};border-color:${v.c}`:""}">${v.l}</button>`).join("")}</div>
+      <div class="meta-grid">
+        <div class="meta"><div class="k">Дата договора</div><div class="v">${fmtDate(c.date)}</div></div>
+        <div class="meta"><div class="k">ИНН контрагента</div><div class="v num">${esc(c.inn||"—")}</div></div>
+      </div>
+      <div class="field"><label>Спецификация (${specs.length})</label>
+        <table class="bidtable"><thead><tr><th>Наименование</th><th style="width:70px">Ед.</th><th style="text-align:right;width:90px">Кол-во</th><th style="text-align:right;width:110px">Цена</th><th style="text-align:right;width:120px">Сумма</th><th style="width:36px"></th></tr></thead>
+        <tbody>${specs.length?specs.map(s=>`<tr><td>${esc(s.name)}</td><td>${esc(s.unit||"")}</td><td class="num" style="text-align:right">${(s.qty||0).toLocaleString("ru-RU")}</td><td class="money" style="text-align:right">${fmtMoney(s.price)}</td><td class="money" style="text-align:right">${fmtMoney((s.qty||0)*(s.price||0))}</td><td style="text-align:right"><button class="btn danger sm" data-dels="${s.id}">✕</button></td></tr>`).join(""):`<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:14px">Позиций нет</td></tr>`}
+        <tr><td colspan="4" class="b" style="text-align:right">Итого по договору:</td><td class="money b" style="text-align:right">${fmtMoney(tot)}</td><td></td></tr></tbody></table>
+        <div style="margin-top:10px"><button class="btn ghost sm" id="c-addspec">＋ Позиция спецификации</button></div>
+      </div>
+    </div>
+    <div class="mf"><button class="btn danger" id="c-del">Удалить</button><div class="spacer"></div><button class="btn ghost" onclick="closeModal()">Закрыть</button></div>
+  `,true);
+  $$("#c-status button").forEach(b=>b.onclick=()=>{c.status=b.dataset.s;save();openContract(id);renderContracts();});
+  $("#c-edit").onclick=()=>openContractForm(id);
+  $("#c-del").onclick=()=>{if(confirm("Удалить договор?")){db.contracts=db.contracts.filter(x=>x.id!==id);save();closeModal();renderContracts();}};
+  $("#c-addspec").onclick=()=>{const name=prompt("Наименование позиции:");if(!name)return;const unit=prompt("Ед. изм.:","шт")||"";const qty=+prompt("Количество:","1")||0;const price=+prompt("Цена за ед., ₽:","0")||0;
+    c.specs=c.specs||[];c.specs.push({id:uid("sp"),name:name.trim(),unit:unit.trim(),qty,price});save();openContract(id);renderContracts();};
+  $$("[data-dels]").forEach(b=>b.onclick=()=>{c.specs=c.specs.filter(s=>s.id!==b.dataset.dels);save();openContract(id);renderContracts();});
+}
+function openContractForm(id){
+  const p=curProject();const e=id?db.contracts.find(x=>x.id===id):null;
+  const d=e||{number:"",date:now(),type:"Генподряд",counterparty:"",inn:"",buildingId:buildingsOf(p.id)[0]?.id||null,status:"draft",specs:[]};
+  showModal(`
+    <div class="mh"><h3>${e?"Редактировать договор":"Новый договор"}</h3><button class="x" onclick="closeModal()">×</button></div>
+    <div class="mb">
+      <div class="field-row">
+        <div class="field"><label>Номер договора</label><input id="cf-num" value="${esc(d.number||"")}"></div>
+        <div class="field"><label>Дата</label><input type="date" id="cf-date" value="${new Date(d.date).toISOString().slice(0,10)}"></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Тип</label><select id="cf-type">${CONTRACT_TYPES.map(t=>`<option ${t===d.type?"selected":""}>${t}</option>`).join("")}</select></div>
+        <div class="field"><label>Статус</label><select id="cf-status">${Object.entries(CSTATUS).map(([k,v])=>`<option value="${k}" ${k===d.status?"selected":""}>${v.l}</option>`).join("")}</select></div>
+      </div>
+      <div class="field"><label>Контрагент</label><input id="cf-cp" value="${esc(d.counterparty||"")}" placeholder="ООО «…» / ИП"></div>
+      <div class="field-row">
+        <div class="field"><label>ИНН</label><input id="cf-inn" value="${esc(d.inn||"")}"></div>
+        <div class="field"><label>Здание / объект</label><select id="cf-bld"><option value="">— без привязки —</option>${buildingsOf(p.id).map(b=>`<option value="${b.id}" ${b.id===d.buildingId?"selected":""}>${esc(b.name)}</option>`).join("")}</select></div>
+      </div>
+      ${e?"":`<div class="small" style="color:var(--muted);font-size:12px">Позиции спецификации добавляются после создания — в карточке договора.</div>`}
+    </div>
+    <div class="mf"><div class="spacer"></div><button class="btn ghost" onclick="closeModal()">Отмена</button><button class="btn" id="cf-save">Сохранить</button></div>
+  `);
+  $("#cf-save").onclick=()=>{
+    const o={number:$("#cf-num").value.trim(),date:new Date($("#cf-date").value).getTime(),type:$("#cf-type").value,
+      status:$("#cf-status").value,counterparty:$("#cf-cp").value.trim(),inn:$("#cf-inn").value.trim(),buildingId:$("#cf-bld").value||null};
+    if(!o.counterparty){toast("Укажите контрагента");return;}
+    if(e){Object.assign(e,o);}else{db.contracts.push(Object.assign({id:uid("dg"),project:p.id,specs:[],created:now()},o));}
+    save();closeModal();renderContracts();toast("Сохранено");
+  };
+}
+function renderBuildings(){
+  const p=curProject();if(!p)return;
+  const list=buildingsOf(p.id);
+  $("#buildingGrid").innerHTML=list.length?list.map(b=>{
+    const cs=contractsOf(p.id).filter(c=>c.buildingId===b.id);const sum=cs.reduce((s,c)=>s+contractTotal(c),0);
+    return `<div class="card click" data-b="${b.id}">
+      <div class="crow"><div class="ct">🏢 ${esc(b.name)}</div><span class="chip" style="background:var(--panel-2);color:var(--text)">${esc(b.code||"")}</span></div>
+      <div class="cmeta"><span>Этажей: ${b.floors||"—"}</span><span>Площадь: ${b.area?b.area.toLocaleString("ru-RU")+" м²":"—"}</span></div>
+      <div class="crow"><span style="color:var(--muted);font-size:12px">Договоров: ${cs.length}</span><span class="money">${fmtMoney(sum)}</span></div>
+    </div>`;}).join(""):emptyBlock("Зданий нет — добавьте объект");
+  $$("#buildingGrid .card").forEach(c=>c.onclick=()=>openBuildingForm(c.dataset.b));
+}
+function openBuildingForm(id){
+  const p=curProject();const e=id?db.buildings.find(x=>x.id===id):null;
+  const d=e||{name:"",code:"",area:null,floors:null};
+  showModal(`
+    <div class="mh"><h3>${e?"Здание / объект":"Новое здание"}</h3><button class="x" onclick="closeModal()">×</button></div>
+    <div class="mb">
+      <div class="field-row">
+        <div class="field"><label>Название</label><input id="bf-name" value="${esc(d.name||"")}" placeholder="Корпус 1"></div>
+        <div class="field"><label>Шифр</label><input id="bf-code" value="${esc(d.code||"")}" placeholder="К1"></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Этажей</label><input type="number" id="bf-floors" value="${d.floors||""}" min="0"></div>
+        <div class="field"><label>Площадь, м²</label><input type="number" id="bf-area" value="${d.area||""}" min="0" step="any"></div>
+      </div>
+    </div>
+    <div class="mf">${e?`<button class="btn danger" id="bf-del">Удалить</button>`:""}<div class="spacer"></div><button class="btn ghost" onclick="closeModal()">Отмена</button><button class="btn" id="bf-save">Сохранить</button></div>
+  `);
+  $("#bf-save").onclick=()=>{const name=$("#bf-name").value.trim();if(!name){toast("Введите название");return;}
+    const o={name,code:$("#bf-code").value.trim(),floors:+$("#bf-floors").value||null,area:+$("#bf-area").value||null};
+    if(e){Object.assign(e,o);}else{db.buildings.push(Object.assign({id:uid("bld"),project:p.id},o));}
+    save();closeModal();renderBuildings();renderContracts();toast("Сохранено");};
+  const del=$("#bf-del");if(del)del.onclick=()=>{if(contractsOf(p.id).some(c=>c.buildingId===id)){toast("Есть договоры по зданию — сначала отвяжите");return;}
+    if(confirm("Удалить здание?")){db.buildings=db.buildings.filter(x=>x.id!==id);save();closeModal();renderBuildings();}};
+}
+
+/* события: склад/договоры */
+["skSearch"].forEach(id=>$("#"+id).addEventListener("input",renderStock));
+$("#btnIssue").onclick=openIssueForm;
+$("#btnStockCsv").onclick=exportStockCSV;
+$("#btnEditBudget").onclick=openBudgetForm;
+$("#btnNewContract").onclick=()=>openContractForm(null);
+$("#btnNewBuilding").onclick=()=>openBuildingForm(null);
+["cqSearch","cqBuilding","cqType"].forEach(id=>$("#"+id).addEventListener(id==="cqSearch"?"input":"change",renderContracts));
+$$("#view-purchases .plan-tabs button").forEach(b=>b.addEventListener("click",()=>{if(b.dataset.ptab2==="stock"){$("#purchStockTab").classList.remove("hidden");renderStock();}else{$("#purchStockTab").classList.add("hidden");}}));
+$$("#view-contracts .plan-tabs button").forEach(b=>b.onclick=()=>{
+  $$("#view-contracts .plan-tabs button").forEach(x=>x.classList.toggle("on",x===b));
+  const t=b.dataset.ctab;$("#contractsTab").classList.toggle("hidden",t!=="contracts");$("#buildingsTab").classList.toggle("hidden",t!=="buildings");
+  if(t==="buildings")renderBuildings();else renderContracts();
+});
 
 /* ============================ Старт ============================ */
 renderProjects();
