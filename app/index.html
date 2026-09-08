@@ -486,7 +486,8 @@ const PRIORITY={low:{l:"Низкий",cls:"pri-low"},med:{l:"Средний",cls
 const TYPES={defect:"Дефект",task:"Задача",inspection:"Осмотр"};
 
 /* --- Локализация РФ: закупки / тендеры / интеграции --- */
-const VAT=0.20; // НДС 20%
+const VAT=0.22; // НДС 22%
+const VATP=Math.round(VAT*100); // ставка НДС, % (для подписей)
 const UNITS=["шт","компл","упак","м","м²","м³","кг","т","л","рулон","м.п."];
 const PCAT={material:"Материалы",tool:"Инструмент",tech:"Спецтехника",service:"Услуги/работы",other:"Прочее"};
 const PSTATUS={
@@ -1241,7 +1242,7 @@ function renderPurchases(){
     ${stat(fmtMoney(sum),"Бюджет закупок","#38b6ff",100)}
     ${stat(fmtMoney(paid),"Оплачено","#4fe0a0",sum?paid/sum*100:0)}
     ${stat(fmtMoney(toPay),"К оплате","#ffb74d",sum?toPay/sum*100:0)}
-    ${stat(fmtMoney(vat),"НДС (20%)","#c08bff",60)}`;
+    ${stat(fmtMoney(vat),"НДС ("+VATP+"%)","#c08bff",60)}`;
   $("#purchList").innerHTML=list.length?list.map(purchRow).join(""):emptyBlock("Нет закупок по фильтру");
   $$("#purchList .trow").forEach(r=>r.onclick=()=>openPurchForm(r.dataset.p));
   updateBadges();
@@ -1295,7 +1296,7 @@ function openPurchForm(id){
     </div>
     <div class="mf">${e?`<button class="btn danger" id="pf-del">Удалить</button>`:""}<div class="spacer"></div><button class="btn ghost" onclick="closeModal()">Отмена</button><button class="btn" id="pf-save">Сохранить</button></div>
   `);
-  const recalc=()=>{const t=(+$("#pf-qty").value||0)*(+$("#pf-price").value||0);$("#pf-total").value=fmtMoney2(t)+"  (НДС "+fmtMoney2(t-t/1.2)+")";};
+  const recalc=()=>{const t=(+$("#pf-qty").value||0)*(+$("#pf-price").value||0);$("#pf-total").value=fmtMoney2(t)+"  (НДС "+fmtMoney2(t-t/(1+VAT))+")";};
   ["pf-qty","pf-price"].forEach(i=>$("#"+i).addEventListener("input",recalc));recalc();
   $("#pf-addsup").onclick=()=>{const nid=addSupplierPrompt();if(nid){$("#pf-supplier").innerHTML=supplierOptions(nid);}};
   $("#pf-save").onclick=()=>{
@@ -1525,13 +1526,13 @@ function csv(rows){ // ; -разделитель + BOM для Excel (RU)
 }
 function xesc(s){return (s==null?"":String(s)).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
 function exportPurchasesCSV(){
-  const p=curProject();const rows=[["Наименование","Категория","Кол-во","Ед.изм.","Цена с НДС","Сумма","в т.ч. НДС 20%","Поставщик","ИНН поставщика","Счёт/УПД","Статус","Дата"]];
+  const p=curProject();const rows=[["Наименование","Категория","Кол-во","Ед.изм.","Цена с НДС","Сумма","в т.ч. НДС "+VATP+"%","Поставщик","ИНН поставщика","Счёт/УПД","Статус","Дата"]];
   purchasesOf(p.id).forEach(x=>{const s=db.suppliers.find(z=>z.id===x.supplier)||{};
     rows.push([x.item,PCAT[x.cat]||"",x.qty,x.unit,x.price,purchTotal(x),purchVat(x).toFixed(2),s.name||"",s.inn||"",x.invoice||"",PSTATUS[x.status].l,fmtDate(x.created)]);});
   download("zakupki_"+dateSlug()+".csv",csv(rows),"text/csv;charset=utf-8");toast("CSV закупок выгружен");
 }
 function exportInvoicesCSV(){
-  const p=curProject();const rows=[["Счёт/УПД","Дата","Контрагент","ИНН","Сумма с НДС","НДС 20%","Статус оплаты","Назначение"]];
+  const p=curProject();const rows=[["Счёт/УПД","Дата","Контрагент","ИНН","Сумма с НДС","НДС "+VATP+"%","Статус оплаты","Назначение"]];
   purchasesOf(p.id).filter(x=>x.invoice||["delivered","paid"].includes(x.status)).forEach(x=>{const s=db.suppliers.find(z=>z.id===x.supplier)||{};
     rows.push([x.invoice||"—",fmtDate(x.delivered||x.created),s.name||"",s.inn||"",purchTotal(x),purchVat(x).toFixed(2),x.status==="paid"?"Оплачен":"К оплате",x.item]);});
   download("reestr_schetov_"+dateSlug()+".csv",csv(rows),"text/csv;charset=utf-8");toast("Реестр счетов выгружен");
@@ -1559,7 +1560,7 @@ function exportPurchases1C(){
         <ЦенаЗаЕдиницу>${(x.price||0).toFixed(2)}</ЦенаЗаЕдиницу>
         <Количество>${x.qty||0}</Количество>
         <Сумма>${total.toFixed(2)}</Сумма>
-        <СтавкиНалогов><СтавкаНалога><Наименование>НДС</Наименование><Ставка>20</Ставка></СтавкаНалога></СтавкиНалогов>
+        <СтавкиНалогов><СтавкаНалога><Наименование>НДС</Наименование><Ставка>${VATP}</Ставка></СтавкаНалога></СтавкиНалогов>
         <Налоги><Налог><Наименование>НДС</Наименование><Сумма>${vat.toFixed(2)}</Сумма></Налог></Налоги>
       </Товар></Товары>
     </Документ>`;}).join("\n");
@@ -1746,7 +1747,7 @@ function openActForm(){
   const recalc=()=>{let tot=0;$$("#af-table input").forEach(i=>{tot+=(+i.value||0)*(+i.dataset.price||0);});
     const vat=tot*VAT;
     $("#af-calc").innerHTML=`<div class="meta"><div class="k">Сумма без НДС</div><div class="v">${fmtMoney(tot)}</div></div>
-      <div class="meta"><div class="k">НДС 20%</div><div class="v">${fmtMoney(vat)}</div></div>
+      <div class="meta"><div class="k">НДС ${VATP}%</div><div class="v">${fmtMoney(vat)}</div></div>
       <div class="meta"><div class="k">Всего с НДС</div><div class="v" style="color:var(--done)">${fmtMoney(tot+vat)}</div></div>
       <div class="meta"><div class="k">Форма</div><div class="v">КС-2</div></div>`;};
   $$("#af-table input").forEach(i=>i.addEventListener("input",recalc));recalc();
@@ -1855,7 +1856,7 @@ function genKS2(actId){
       <tr class="small"><th class="c">1</th><th class="c">2</th><th class="c">3</th><th class="c">4</th><th class="c">5</th><th class="c">6</th><th class="c">7</th></tr></thead>
       <tbody>${rows}
         <tr><td colspan="6" class="r b">Итого:</td><td class="r b">${nf2.format(tot)}</td></tr>
-        <tr><td colspan="6" class="r">В том числе НДС 20%:</td><td class="r">${nf2.format(vat)}</td></tr>
+        <tr><td colspan="6" class="r">В том числе НДС ${VATP}%:</td><td class="r">${nf2.format(vat)}</td></tr>
         <tr><td colspan="6" class="r b">Всего с НДС:</td><td class="r b">${nf2.format(tot+vat)}</td></tr>
       </tbody>
     </table>
@@ -1884,7 +1885,7 @@ function genKS3(){
       <tbody>
         <tr><td class="c">1</td><td>Строительно-монтажные работы по договору № ${xesc(p.contractNo||"____")}</td><td class="r">${nf2.format(totalAll)}</td><td class="r">${nf2.format(totalYear)}</td><td class="r">${nf2.format(totalPeriod)}</td></tr>
         <tr><td colspan="2" class="r b">Итого:</td><td class="r b">${nf2.format(totalAll)}</td><td class="r b">${nf2.format(totalYear)}</td><td class="r b">${nf2.format(totalPeriod)}</td></tr>
-        <tr><td colspan="2" class="r">Сумма НДС 20%:</td><td class="r">${nf2.format(vatAll)}</td><td class="r">${nf2.format(vatYear)}</td><td class="r">${nf2.format(vatPer)}</td></tr>
+        <tr><td colspan="2" class="r">Сумма НДС ${VATP}%:</td><td class="r">${nf2.format(vatAll)}</td><td class="r">${nf2.format(vatYear)}</td><td class="r">${nf2.format(vatPer)}</td></tr>
         <tr><td colspan="2" class="r b">Всего с учётом НДС:</td><td class="r b">${nf2.format(totalAll+vatAll)}</td><td class="r b">${nf2.format(totalYear+vatYear)}</td><td class="r b">${nf2.format(totalPeriod+vatPer)}</td></tr>
       </tbody>
     </table>
