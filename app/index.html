@@ -230,6 +230,8 @@
       <button class="navitem active" data-view="dashboard"><span class="ic">▦</span> Обзор</button>
       <button class="navitem" data-view="plan"><span class="ic">🗺</span> План <span class="badge" id="nb-plan">0</span></button>
       <button class="navitem" data-view="tickets"><span class="ic">✓</span> Задачи <span class="badge" id="nb-tickets">0</span></button>
+      <button class="navitem" data-view="estimate"><span class="ic">📐</span> Смета · себест. <span class="badge" id="nb-est">0</span></button>
+      <button class="navitem" data-view="acts"><span class="ic">📃</span> Акты и КС <span class="badge" id="nb-acts">0</span></button>
       <button class="navitem" data-view="purchases"><span class="ic">🧾</span> Закупки <span class="badge" id="nb-purch">0</span></button>
       <button class="navitem" data-view="tenders"><span class="ic">📢</span> Тендеры <span class="badge" id="nb-tend">0</span></button>
       <button class="navitem" data-view="team"><span class="ic">👥</span> Команда</button>
@@ -408,6 +410,55 @@
           </div>
         </div>
       </section>
+
+      <!-- Estimate / cost -->
+      <section class="view" id="view-estimate">
+        <div class="stat-grid" id="estStats"></div>
+        <div class="panel" style="margin-bottom:18px">
+          <div class="ph"><h3>Разбивка по разделам (АР, КЖ, КМ…)</h3><div style="flex:1"></div><button class="btn ghost sm" id="expEstCsv">⭳ Смета в CSV</button></div>
+          <div class="list-hd"><span style="width:150px">Раздел</span><span style="flex:1">Наименование</span><span style="width:70px;text-align:right">Поз.</span><span style="width:130px;text-align:right">Стоимость</span><span style="width:130px;text-align:right">Себест-ть</span><span style="width:110px;text-align:right;padding-right:12px">Прибыль</span><span style="width:70px;text-align:right">Марж.</span><span style="width:120px;padding-left:16px">Выполнено</span></div>
+          <div id="sectionBreak"></div>
+        </div>
+        <div class="filters">
+          <input id="wqSearch" placeholder="Поиск по позициям сметы…">
+          <select id="wqSection"><option value="">Все разделы</option></select>
+          <button class="btn sm" id="btnNewWork">＋ Позиция сметы</button>
+        </div>
+        <div class="panel">
+          <div class="list-hd"><span style="width:64px">Раздел</span><span style="flex:1">Наименование работ</span><span style="width:110px;text-align:right">Объём</span><span style="width:120px;text-align:right">Стоимость</span><span style="width:70px;text-align:right">Марж.</span><span style="width:130px;padding-left:16px">Выполнено</span></div>
+          <div id="workList" class="tlist"></div>
+        </div>
+      </section>
+
+      <!-- Acts (КС) -->
+      <section class="view" id="view-acts">
+        <div class="plan-tabs" style="max-width:520px;margin-bottom:16px">
+          <button class="on" data-atab="acts">Акты КС-2 / КС-3</button>
+          <button data-atab="journal">Журнал работ КС-6</button>
+        </div>
+        <div id="actsTab">
+          <div class="filters">
+            <button class="btn sm" id="btnNewAct">＋ Сформировать КС-2</button>
+            <button class="btn ghost sm" id="btnKS3">📄 Сводная КС-3</button>
+            <button class="btn ghost sm" id="btnActReq">🏛 Реквизиты для КС</button>
+          </div>
+          <div class="panel">
+            <div class="list-hd"><span style="width:120px">Форма</span><span style="flex:1">Период</span><span style="width:150px;text-align:right">Сумма без НДС</span><span style="width:150px;text-align:right;padding-right:12px">Всего с НДС</span><span style="width:150px"></span></div>
+            <div id="actList" class="tlist"></div>
+          </div>
+        </div>
+        <div id="journalTab" class="hidden">
+          <div class="filters">
+            <select id="jqSection"><option value="">Все разделы</option></select>
+            <button class="btn sm" id="btnNewJournal">＋ Запись в журнал</button>
+            <button class="btn ghost sm" id="btnPrintKS6">🖨 Журнал КС-6 (печать)</button>
+          </div>
+          <div class="panel">
+            <div class="list-hd"><span style="width:120px">Дата</span><span style="width:80px">Раздел</span><span style="flex:1">Выполненные работы</span><span style="width:160px">Ответственный</span></div>
+            <div id="journalList" class="tlist"></div>
+          </div>
+        </div>
+      </section>
     </div>
   </main>
 </div>
@@ -467,6 +518,32 @@ function fmtMoney2(v){return money2.format(v||0)}
 function purchTotal(p){return (p.qty||0)*(p.price||0)}
 function purchVat(p){const t=purchTotal(p);return t-t/(1+VAT)}
 
+/* Разделы рабочей документации (марки комплектов) */
+const SECTIONS=[
+  {code:"ГП",name:"Генеральный план"},
+  {code:"АР",name:"Архитектурные решения"},
+  {code:"АС",name:"Архитектурно-строительные решения"},
+  {code:"КЖ",name:"Конструкции железобетонные"},
+  {code:"КМ",name:"Конструкции металлические"},
+  {code:"КМД",name:"КМ деталировочные"},
+  {code:"ОВ",name:"Отопление и вентиляция"},
+  {code:"ВК",name:"Водоснабжение и канализация"},
+  {code:"ЭОМ",name:"Электрооборудование и освещение"},
+  {code:"СС",name:"Слаботочные системы / связь"},
+  {code:"ПС",name:"Пожарная сигнализация"},
+  {code:"БЛ",name:"Благоустройство"},
+  {code:"ПР",name:"Прочие работы"}
+];
+function sectionName(c){const s=SECTIONS.find(x=>x.code===c);return s?s.name:(c||"—")}
+/* Смета: цены без НДС; себестоимость < цены */
+function wRev(w){return (w.qty||0)*(w.price||0)}          // договорная стоимость
+function wCost(w){return (w.qty||0)*(w.cost||0)}          // себестоимость
+function wProfit(w){return wRev(w)-wCost(w)}
+function wMargin(w){const r=wRev(w);return r?wProfit(w)/r*100:0}
+function wDoneVal(w){return (w.done||0)*(w.price||0)}     // выполнено, ₽
+function wDonePct(w){return (w.qty||0)?Math.min(100,(w.done||0)/w.qty*100):0}
+function actTotal(a){return a.lines.reduce((s,l)=>s+(l.qty||0)*(l.price||0),0)}
+
 /* Встроенный SVG «план этажа» (используется в демо-данных) */
 const FLOORPLAN_SVG=`<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="700" viewBox="0 0 1000 700">
 <defs>
@@ -521,6 +598,9 @@ function migrate(d){
   d.suppliers=d.suppliers||[];
   d.purchases=d.purchases||[];
   d.tenders=d.tenders||[];
+  d.works=d.works||[];
+  d.acts=d.acts||[];
+  d.journal=d.journal||[];
   d.org=d.org||{name:"",inn:"",kpp:""};
   if(!d.integrations){d.integrations={};INTEGRATIONS.forEach(i=>d.integrations[i.id]={enabled:false,cfg:{}});}
   return d;
@@ -529,6 +609,9 @@ function curProject(){return db.projects.find(p=>p.id===db.currentProject)||db.p
 function ticketsOf(pid){return db.tickets.filter(t=>t.project===pid)}
 function purchasesOf(pid){return db.purchases.filter(p=>p.project===pid)}
 function tendersOf(pid){return db.tenders.filter(t=>t.project===pid)}
+function worksOf(pid){return db.works.filter(w=>w.project===pid)}
+function actsOf(pid){return db.acts.filter(a=>a.project===pid)}
+function journalOf(pid){return db.journal.filter(j=>j.project===pid)}
 function supplierName(id){const s=db.suppliers.find(x=>x.id===id);return s?s.name:(id||"—")}
 
 /* ============================ Демо-данные ============================ */
@@ -599,12 +682,41 @@ function seed(){
   const org={name:"ООО «СтройГрупп»",inn:"7700112233",kpp:"770001001"};
   const integrations={}; INTEGRATIONS.forEach(i=>integrations[i.id]={enabled:false,cfg:{}});
 
+  // Смета: работы по разделам РД (цены без НДС; себестоимость < цены)
+  const W=(o)=>Object.assign({id:uid("w"),project:pid,done:0,created:now()-Math.random()*7e8},o);
+  const works=[
+    W({section:"КЖ",name:"Устройство монолитных ж/б стен",unit:"м³",qty:820,price:9800,cost:7500,done:610}),
+    W({section:"КЖ",name:"Устройство монолитных перекрытий",unit:"м³",qty:640,price:10200,cost:7900,done:400}),
+    W({section:"КЖ",name:"Армирование конструкций",unit:"т",qty:95,price:78000,cost:64000,done:70}),
+    W({section:"АР",name:"Кладка наружных стен из газобетона",unit:"м³",qty:540,price:6400,cost:4800,done:210}),
+    W({section:"АР",name:"Штукатурка внутренних стен",unit:"м²",qty:8600,price:640,cost:430,done:1500}),
+    W({section:"АР",name:"Устройство стяжки пола",unit:"м²",qty:5400,price:720,cost:520,done:900}),
+    W({section:"КМ",name:"Монтаж металлоконструкций навеса",unit:"т",qty:24,price:98000,cost:82000,done:24}),
+    W({section:"ОВ",name:"Монтаж системы отопления",unit:"компл",qty:1,price:2400000,cost:1850000,done:0}),
+    W({section:"ВК",name:"Прокладка внутренних сетей ВК",unit:"м.п.",qty:1800,price:1200,cost:820,done:300}),
+    W({section:"ЭОМ",name:"Электромонтажные работы",unit:"компл",qty:1,price:3200000,cost:2450000,done:0})
+  ];
+  // Акт КС-2 (демо)
+  const acts=[{id:uid("act"),project:pid,number:"1",kind:"КС-2",date:now()-6e8,from:now()-9e8,to:now()-6e8,
+    lines:[
+      {name:"Устройство монолитных ж/б стен",section:"КЖ",unit:"м³",qty:610,price:9800},
+      {name:"Устройство монолитных перекрытий",section:"КЖ",unit:"м³",qty:400,price:10200}
+    ],created:now()-6e8}];
+  // Журнал работ КС-6 (демо)
+  const journal=[
+    {id:uid("j"),project:pid,date:now()-6.5e8,section:"КЖ",text:"Бетонирование монолитных стен 3-го этажа, оси 1-4",author:"Виталий К."},
+    {id:uid("j"),project:pid,date:now()-4e8,section:"КЖ",text:"Устройство перекрытия над 3-м этажом",author:"Виталий К."},
+    {id:uid("j"),project:pid,date:now()-2e8,section:"АР",text:"Кладка наружных стен, секция Б",author:"Анна С."},
+    {id:uid("j"),project:pid,date:now()-6e7,section:"АР",text:"Штукатурные работы, 2-й этаж",author:"Анна С."}
+  ];
+
+  const mainProject={id:pid,name:"ЖК «Северный», корпус 3",address:"г. Пример, ул. Строителей, 3",members,created:now()-1.1e10,
+    investor:"ООО «Инвест-Девелопмент»",customer:"ООО «Инвест-Девелопмент»",contractor:"ООО «СтройГрупп»",
+    contractNo:"12-СМР/2026",contractDate:now()-1.1e10};
+
   return {currentProject:pid,seq:6,
-    projects:[
-      {id:pid,name:"ЖК «Северный», корпус 3",address:"г. Пример, ул. Строителей, 3",members,created:now()-1.1e10},
-      archProject
-    ],
-    plans:[plan1],tickets,suppliers,purchases,tenders,org,integrations};
+    projects:[mainProject,archProject],
+    plans:[plan1],tickets,suppliers,purchases,tenders,works,acts,journal,org,integrations};
 }
 
 /* ============================ Утилиты рендера ============================ */
@@ -630,7 +742,7 @@ function setView(v){
   ui.view=v;
   $$(".navitem").forEach(b=>b.classList.toggle("active",b.dataset.view===v));
   $$(".view").forEach(s=>s.classList.toggle("active",s.id==="view-"+v));
-  const titles={dashboard:"Обзор",plan:"План",tickets:"Задачи",purchases:"Закупки",tenders:"Тендеры",team:"Команда",history:"История проектов",integrations:"Интеграции с бухгалтерией"};
+  const titles={dashboard:"Обзор",plan:"План",tickets:"Задачи",estimate:"Смета и себестоимость",acts:"Акты и формы КС",purchases:"Закупки",tenders:"Тендеры",team:"Команда",history:"История проектов",integrations:"Интеграции с бухгалтерией"};
   $("#viewTitle").textContent=titles[v];
   const p=curProject();
   const orgWide=(v==="history"||v==="integrations");
@@ -641,6 +753,8 @@ function setView(v){
   if(v==="team")renderTeam();
   if(v==="purchases")renderPurchases();
   if(v==="tenders")renderTenders();
+  if(v==="estimate")renderEstimate();
+  if(v==="acts")renderActs();
   if(v==="history")renderHistory();
   if(v==="integrations")renderIntegrations();
 }
@@ -1062,6 +1176,8 @@ function updateBadges(){
   $("#nb-plan").textContent=projectPlans().length;
   $("#nb-purch").textContent=purchasesOf(pid).filter(x=>["planned","ordered","delivered"].includes(x.status)).length;
   $("#nb-tend").textContent=tendersOf(pid).filter(t=>["open","review"].includes(t.status)).length;
+  $("#nb-est").textContent=worksOf(pid).length;
+  $("#nb-acts").textContent=actsOf(pid).length;
 }
 function refreshAll(){renderDashboard();renderTickets();updateBadges();}
 
@@ -1469,6 +1585,351 @@ $("#exp1c").onclick=exportPurchases1C;
 $("#expPurchCsv").onclick=exportPurchasesCSV;
 $("#expInvCsv").onclick=exportInvoicesCSV;
 $("#expSuppCsv").onclick=exportSuppliersCSV;
+
+/* ============================ СМЕТА И СЕБЕСТОИМОСТЬ ============================ */
+function renderEstimate(){
+  const p=curProject();if(!p)return;
+  const ws=worksOf(p.id);
+  const rev=ws.reduce((s,w)=>s+wRev(w),0),cost=ws.reduce((s,w)=>s+wCost(w),0);
+  const profit=rev-cost,margin=rev?profit/rev*100:0;
+  const doneVal=ws.reduce((s,w)=>s+wDoneVal(w),0),donePct=rev?doneVal/rev*100:0;
+  $("#estStats").innerHTML=`
+    ${stat(fmtMoney(rev),"Договорная стоимость","#38b6ff",100)}
+    ${stat(fmtMoney(cost),"Себестоимость","#ffb74d",rev?cost/rev*100:0)}
+    ${stat(fmtMoney(profit),"Плановая прибыль","#4fe0a0",Math.max(6,margin))}
+    ${stat(margin.toFixed(1)+"%","Рентабельность","#c08bff",Math.max(6,margin))}
+    ${stat(fmtMoney(doneVal),"Выполнено ("+donePct.toFixed(0)+"%)","#4dc3ff",donePct)}`;
+  const bySec={};
+  ws.forEach(w=>{const k=w.section||"ПР";const b=(bySec[k]=bySec[k]||{n:0,rev:0,cost:0,done:0});b.n++;b.rev+=wRev(w);b.cost+=wCost(w);b.done+=wDoneVal(w);});
+  const order=SECTIONS.map(s=>s.code).filter(c=>bySec[c]);
+  $("#sectionBreak").innerHTML=order.length?order.map(c=>{
+    const b=bySec[c],prof=b.rev-b.cost,mg=b.rev?prof/b.rev*100:0,dp=b.rev?b.done/b.rev*100:0;
+    return `<div class="trow" style="cursor:default">
+      <div style="width:150px"><span class="chip" style="background:var(--panel-2);color:var(--text)"><b>${c}</b></span></div>
+      <div class="tmain" style="flex:1"><div class="tt" style="font-weight:500;font-size:13px">${esc(sectionName(c))}</div></div>
+      <div class="num" style="width:70px;text-align:right">${b.n}</div>
+      <div class="money" style="width:130px;text-align:right">${fmtMoney(b.rev)}</div>
+      <div class="num" style="width:130px;text-align:right;color:var(--muted)">${fmtMoney(b.cost)}</div>
+      <div class="money" style="width:110px;text-align:right;padding-right:12px;color:${prof>=0?'var(--done)':'var(--danger)'}">${fmtMoney(prof)}</div>
+      <div class="num" style="width:70px;text-align:right">${mg.toFixed(0)}%</div>
+      <div style="width:120px"><div class="stat bar" style="margin:0;padding:0;border:0;height:6px;background:var(--panel-2)"><i style="width:${dp}%;background:var(--progress)"></i></div><div style="font-size:11px;color:var(--muted);margin-top:3px">${dp.toFixed(0)}%</div></div>
+    </div>`;}).join(""):emptyBlock("Смета пуста — добавьте позиции");
+  const sel=$("#wqSection");const cur=sel.value;
+  sel.innerHTML=`<option value="">Все разделы</option>`+SECTIONS.map(s=>`<option value="${s.code}">${s.code} — ${s.name}</option>`).join("");sel.value=cur;
+  let list=ws;const q=$("#wqSearch").value.toLowerCase().trim();
+  if(q)list=list.filter(w=>w.name.toLowerCase().includes(q));
+  if(sel.value)list=list.filter(w=>w.section===sel.value);
+  list=[...list].sort((a,b)=>(a.section||"").localeCompare(b.section||"")||b.created-a.created);
+  $("#workList").innerHTML=list.length?list.map(workRow).join(""):emptyBlock("Нет позиций");
+  $$("#workList .trow").forEach(r=>r.onclick=()=>openWorkForm(r.dataset.w));
+  updateBadges();
+}
+function workRow(w){
+  const dp=wDonePct(w);
+  return `<div class="trow" data-w="${w.id}">
+    <div style="width:64px"><span class="chip" style="background:var(--panel-2);color:var(--text)"><b>${esc(w.section||"—")}</b></span></div>
+    <div class="tmain" style="flex:1"><div class="tt">${esc(w.name)}</div><div class="tm"><span>${fmtMoney(w.price)}/${esc(w.unit)}</span><span>себест. ${fmtMoney(w.cost)}</span></div></div>
+    <div class="num" style="width:110px;text-align:right">${(w.qty||0).toLocaleString("ru-RU")} ${esc(w.unit)}</div>
+    <div class="money" style="width:120px;text-align:right">${fmtMoney(wRev(w))}</div>
+    <div class="num" style="width:70px;text-align:right;color:${wMargin(w)>=0?'var(--done)':'var(--danger)'}">${wMargin(w).toFixed(0)}%</div>
+    <div style="width:130px"><div class="stat bar" style="margin:0;padding:0;border:0;height:6px;background:var(--panel-2)"><i style="width:${dp}%;background:var(--progress)"></i></div><div style="font-size:11px;color:var(--muted);margin-top:3px">${dp.toFixed(0)}% · ${(w.done||0).toLocaleString("ru-RU")} ${esc(w.unit)}</div></div>
+  </div>`;
+}
+function openWorkForm(id){
+  const e=id?db.works.find(x=>x.id===id):null;
+  const d=e||{section:"АР",name:"",unit:"м²",qty:1,price:0,cost:0,done:0};
+  showModal(`
+    <div class="mh"><h3>${e?"Позиция сметы":"Новая позиция сметы"}</h3><button class="x" onclick="closeModal()">×</button></div>
+    <div class="mb">
+      <div class="field-row">
+        <div class="field"><label>Раздел РД</label><select id="wf-section">${SECTIONS.map(s=>`<option value="${s.code}" ${s.code===d.section?"selected":""}>${s.code} — ${s.name}</option>`).join("")}</select></div>
+        <div class="field"><label>Ед. изм.</label><select id="wf-unit">${UNITS.map(u=>`<option ${u===d.unit?"selected":""}>${u}</option>`).join("")}</select></div>
+      </div>
+      <div class="field"><label>Наименование работ</label><input id="wf-name" value="${esc(d.name)}" placeholder="Напр. Устройство монолитных стен"></div>
+      <div class="field-row">
+        <div class="field"><label>Объём (план)</label><input type="number" id="wf-qty" value="${d.qty}" min="0" step="any"></div>
+        <div class="field"><label>Выполнено (объём)</label><input type="number" id="wf-done" value="${d.done||0}" min="0" step="any"></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Цена за ед., ₽ (без НДС)</label><input type="number" id="wf-price" value="${d.price}" min="0" step="any"></div>
+        <div class="field"><label>Себестоимость за ед., ₽</label><input type="number" id="wf-cost" value="${d.cost}" min="0" step="any"></div>
+      </div>
+      <div class="meta-grid" id="wf-calc" style="margin-bottom:0"></div>
+    </div>
+    <div class="mf">${e?`<button class="btn danger" id="wf-del">Удалить</button>`:""}<div class="spacer"></div><button class="btn ghost" onclick="closeModal()">Отмена</button><button class="btn" id="wf-save">Сохранить</button></div>
+  `);
+  const recalc=()=>{const q=+$("#wf-qty").value||0,pr=+$("#wf-price").value||0,co=+$("#wf-cost").value||0;
+    const rev=q*pr,cost=q*co,prof=rev-cost,mg=rev?prof/rev*100:0;
+    $("#wf-calc").innerHTML=`
+      <div class="meta"><div class="k">Договорная стоимость</div><div class="v">${fmtMoney(rev)}</div></div>
+      <div class="meta"><div class="k">Себестоимость</div><div class="v">${fmtMoney(cost)}</div></div>
+      <div class="meta"><div class="k">Прибыль</div><div class="v" style="color:${prof>=0?'var(--done)':'var(--danger)'}">${fmtMoney(prof)}</div></div>
+      <div class="meta"><div class="k">Рентабельность</div><div class="v">${mg.toFixed(1)}%</div></div>`;};
+  ["wf-qty","wf-price","wf-cost"].forEach(i=>$("#"+i).addEventListener("input",recalc));recalc();
+  $("#wf-save").onclick=()=>{
+    const name=$("#wf-name").value.trim();if(!name){toast("Введите наименование");return;}
+    const o={section:$("#wf-section").value,unit:$("#wf-unit").value,name,qty:+$("#wf-qty").value||0,
+      done:+$("#wf-done").value||0,price:+$("#wf-price").value||0,cost:+$("#wf-cost").value||0};
+    if(e){Object.assign(e,o);}else{db.works.push(Object.assign({id:uid("w"),project:curProject().id,created:now()},o));}
+    save();closeModal();renderEstimate();toast("Сохранено");
+  };
+  const del=$("#wf-del");if(del)del.onclick=()=>{if(confirm("Удалить позицию?")){db.works=db.works.filter(x=>x.id!==id);save();closeModal();renderEstimate();}};
+  setTimeout(()=>$("#wf-name").focus(),50);
+}
+function exportEstimateCSV(){
+  const p=curProject();const rows=[["Раздел","Код раздела","Наименование","Ед.","Объём","Цена без НДС","Стоимость","Себест. за ед.","Себестоимость","Прибыль","Маржа %","Выполнено (объём)","Выполнено %"]];
+  worksOf(p.id).forEach(w=>rows.push([sectionName(w.section),w.section,w.name,w.unit,w.qty,w.price,wRev(w),w.cost,wCost(w),wProfit(w),wMargin(w).toFixed(1),w.done||0,wDonePct(w).toFixed(0)]));
+  download("smeta_"+dateSlug()+".csv",csv(rows),"text/csv;charset=utf-8");toast("Смета выгружена в CSV");
+}
+
+/* ============================ АКТЫ / ФОРМЫ КС ============================ */
+function renderActs(){
+  const p=curProject();if(!p)return;
+  const as=actsOf(p.id).sort((a,b)=>b.date-a.date);
+  $("#actList").innerHTML=as.length?as.map(actRow).join(""):emptyBlock("Актов пока нет — сформируйте КС-2");
+  $$("#actList [data-act]").forEach(b=>b.onclick=(e)=>{e.stopPropagation();genKS2(b.dataset.act);});
+  $$("#actList [data-delact]").forEach(b=>b.onclick=(e)=>{e.stopPropagation();if(confirm("Удалить акт?")){db.acts=db.acts.filter(x=>x.id!==b.dataset.delact);save();renderActs();}});
+  const jsel=$("#jqSection");const cur=jsel.value;
+  jsel.innerHTML=`<option value="">Все разделы</option>`+SECTIONS.map(s=>`<option value="${s.code}">${s.code}</option>`).join("");jsel.value=cur;
+  let js=journalOf(p.id).sort((a,b)=>b.date-a.date);
+  if(jsel.value)js=js.filter(x=>x.section===jsel.value);
+  $("#journalList").innerHTML=js.length?js.map(journalRow).join(""):emptyBlock("Журнал пуст");
+  $$("#journalList [data-delj]").forEach(b=>b.onclick=()=>{if(confirm("Удалить запись?")){db.journal=db.journal.filter(x=>x.id!==b.dataset.delj);save();renderActs();}});
+  updateBadges();
+}
+function actRow(a){const tot=actTotal(a),vat=tot*VAT;
+  return `<div class="trow" style="cursor:default">
+    <div style="width:120px"><span class="chip st-done">${a.kind} № ${esc(a.number)}</span></div>
+    <div class="tmain" style="flex:1"><div class="tt" style="font-weight:500;font-size:13px">${fmtDate(a.from)} — ${fmtDate(a.to)}</div><div class="tm"><span>позиций: ${a.lines.length}</span><span>от ${fmtDate(a.date)}</span></div></div>
+    <div class="money" style="width:150px;text-align:right">${fmtMoney(tot)}</div>
+    <div class="money" style="width:150px;text-align:right;padding-right:12px">${fmtMoney(tot+vat)}</div>
+    <div style="width:150px;display:flex;gap:6px;justify-content:flex-end"><button class="btn ghost sm" data-act="${a.id}">🖨 КС-2</button><button class="btn danger sm" data-delact="${a.id}">✕</button></div>
+  </div>`;}
+function journalRow(j){
+  return `<div class="trow" style="cursor:default">
+    <div style="width:120px" class="num">${fmtDate(j.date)}</div>
+    <div style="width:80px"><span class="chip" style="background:var(--panel-2);color:var(--text)">${esc(j.section||"—")}</span></div>
+    <div class="tmain" style="flex:1"><div class="tt" style="font-weight:500;font-size:13px">${esc(j.text)}</div></div>
+    <div style="width:160px;display:flex;align-items:center;gap:8px">${esc(j.author||"")}<button class="btn danger sm" data-delj="${j.id}" style="margin-left:auto">✕</button></div>
+  </div>`;}
+function openActForm(){
+  const p=curProject();const ws=worksOf(p.id);
+  if(!ws.length){toast("Сначала добавьте позиции в смету");return;}
+  const num=String(actsOf(p.id).length+1);
+  const rows=ws.map(w=>{const remain=Math.max(0,(w.qty||0)-(w.done||0));
+    return `<tr>
+      <td style="padding:6px 4px">${esc(w.name)} <span style="color:var(--muted)">· ${esc(w.section)} · ${fmtMoney(w.price)}/${esc(w.unit)}</span></td>
+      <td class="num" style="text-align:right;padding:6px 4px;white-space:nowrap">ост. ${remain.toLocaleString("ru-RU")} ${esc(w.unit)}</td>
+      <td style="padding:6px 4px"><input type="number" data-wid="${w.id}" data-price="${w.price}" data-unit="${esc(w.unit)}" data-name="${esc(w.name)}" data-section="${esc(w.section)}" min="0" max="${remain}" step="any" value="0" style="width:100px;background:var(--panel-2);border:1px solid var(--line);color:var(--text);border-radius:7px;padding:6px"></td>
+    </tr>`;}).join("");
+  showModal(`
+    <div class="mh"><h3>Формирование КС-2</h3><button class="x" onclick="closeModal()">×</button></div>
+    <div class="mb">
+      <div class="field-row">
+        <div class="field"><label>Номер акта</label><input id="af-num" value="${num}"></div>
+        <div class="field"><label>Дата акта</label><input type="date" id="af-date" value="${new Date().toISOString().slice(0,10)}"></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Отчётный период с</label><input type="date" id="af-from" value="${new Date(now()-30*864e5).toISOString().slice(0,10)}"></div>
+        <div class="field"><label>по</label><input type="date" id="af-to" value="${new Date().toISOString().slice(0,10)}"></div>
+      </div>
+      <div class="field"><label>Выполнено за период (введите объём по нужным работам)</label>
+        <table style="width:100%;border-collapse:collapse;font-size:13px" id="af-table">
+          <thead><tr><th style="text-align:left;color:var(--muted);font-size:11px;padding:6px 4px">Работа</th><th style="text-align:right;color:var(--muted);font-size:11px;padding:6px 4px">Остаток</th><th style="text-align:left;color:var(--muted);font-size:11px;padding:6px 4px;width:110px">Объём</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+      <div class="meta-grid" id="af-calc" style="margin-bottom:0"></div>
+    </div>
+    <div class="mf"><div class="spacer"></div><button class="btn ghost" onclick="closeModal()">Отмена</button><button class="btn" id="af-save">Сформировать</button></div>
+  `,true);
+  const recalc=()=>{let tot=0;$$("#af-table input").forEach(i=>{tot+=(+i.value||0)*(+i.dataset.price||0);});
+    const vat=tot*VAT;
+    $("#af-calc").innerHTML=`<div class="meta"><div class="k">Сумма без НДС</div><div class="v">${fmtMoney(tot)}</div></div>
+      <div class="meta"><div class="k">НДС 20%</div><div class="v">${fmtMoney(vat)}</div></div>
+      <div class="meta"><div class="k">Всего с НДС</div><div class="v" style="color:var(--done)">${fmtMoney(tot+vat)}</div></div>
+      <div class="meta"><div class="k">Форма</div><div class="v">КС-2</div></div>`;};
+  $$("#af-table input").forEach(i=>i.addEventListener("input",recalc));recalc();
+  $("#af-save").onclick=()=>{
+    const lines=[];
+    $$("#af-table input").forEach(i=>{const q=+i.value||0;if(q>0){
+      lines.push({workId:i.dataset.wid,name:i.dataset.name,section:i.dataset.section,unit:i.dataset.unit,qty:q,price:+i.dataset.price||0});
+      const w=db.works.find(x=>x.id===i.dataset.wid);if(w)w.done=Math.min(w.qty,(w.done||0)+q);
+    }});
+    if(!lines.length){toast("Укажите объём хотя бы по одной работе");return;}
+    db.acts.push({id:uid("act"),project:p.id,number:$("#af-num").value.trim()||num,kind:"КС-2",
+      date:new Date($("#af-date").value).getTime(),from:new Date($("#af-from").value).getTime(),to:new Date($("#af-to").value).getTime(),
+      lines,created:now()});
+    save();closeModal();renderActs();toast("КС-2 сформирован");
+  };
+}
+function openJournalForm(){
+  showModal(`
+    <div class="mh"><h3>Запись в журнал работ (КС-6)</h3><button class="x" onclick="closeModal()">×</button></div>
+    <div class="mb">
+      <div class="field-row">
+        <div class="field"><label>Дата</label><input type="date" id="jf-date" value="${new Date().toISOString().slice(0,10)}"></div>
+        <div class="field"><label>Раздел</label><select id="jf-section">${SECTIONS.map(s=>`<option value="${s.code}">${s.code} — ${s.name}</option>`).join("")}</select></div>
+      </div>
+      <div class="field"><label>Выполненные работы</label><textarea id="jf-text" placeholder="Что выполнено, оси/этаж/секция…"></textarea></div>
+      <div class="field"><label>Ответственный</label><select id="jf-author">${curProject().members.map(m=>`<option>${esc(m.name)}</option>`).join("")}</select></div>
+    </div>
+    <div class="mf"><div class="spacer"></div><button class="btn ghost" onclick="closeModal()">Отмена</button><button class="btn" id="jf-save">Добавить</button></div>
+  `);
+  $("#jf-save").onclick=()=>{
+    const text=$("#jf-text").value.trim();if(!text){toast("Опишите работы");return;}
+    db.journal.push({id:uid("j"),project:curProject().id,date:new Date($("#jf-date").value).getTime(),
+      section:$("#jf-section").value,text,author:$("#jf-author").value});
+    save();closeModal();renderActs();toast("Запись добавлена");
+  };
+}
+function openActReqForm(){
+  const p=curProject();
+  showModal(`
+    <div class="mh"><h3>Реквизиты для форм КС</h3><button class="x" onclick="closeModal()">×</button></div>
+    <div class="mb">
+      <div class="field"><label>Инвестор</label><input id="rq-inv" value="${esc(p.investor||"")}"></div>
+      <div class="field"><label>Заказчик</label><input id="rq-cust" value="${esc(p.customer||"")}"></div>
+      <div class="field"><label>Подрядчик</label><input id="rq-contr" value="${esc(p.contractor||db.org.name||"")}"></div>
+      <div class="field-row">
+        <div class="field"><label>Договор №</label><input id="rq-no" value="${esc(p.contractNo||"")}"></div>
+        <div class="field"><label>Дата договора</label><input type="date" id="rq-date" value="${p.contractDate?new Date(p.contractDate).toISOString().slice(0,10):""}"></div>
+      </div>
+    </div>
+    <div class="mf"><div class="spacer"></div><button class="btn ghost" onclick="closeModal()">Отмена</button><button class="btn" id="rq-save">Сохранить</button></div>
+  `);
+  $("#rq-save").onclick=()=>{
+    p.investor=$("#rq-inv").value.trim();p.customer=$("#rq-cust").value.trim();p.contractor=$("#rq-contr").value.trim();
+    p.contractNo=$("#rq-no").value.trim();p.contractDate=$("#rq-date").value?new Date($("#rq-date").value).getTime():null;
+    save();closeModal();toast("Реквизиты сохранены");
+  };
+}
+
+/* --- Генерация печатных форм КС (HTML → печать/PDF) --- */
+const nf2=new Intl.NumberFormat("ru-RU",{minimumFractionDigits:2,maximumFractionDigits:2});
+function dfmt(ts){if(!ts)return "«__» ______ 20__ г.";const d=new Date(ts);return String(d.getDate()).padStart(2,"0")+"."+String(d.getMonth()+1).padStart(2,"0")+"."+d.getFullYear()}
+function docWrap(title,inner){
+  return `<!DOCTYPE html><html lang="ru"><head><meta charset="UTF-8"><title>${xesc(title)}</title>
+<style>
+  body{font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#000;background:#fff;margin:0;padding:24px}
+  .doc{max-width:960px;margin:0 auto}
+  table{border-collapse:collapse}
+  .tbl{width:100%}.tbl th,.tbl td{border:1px solid #000;padding:4px 6px;font-size:11px;vertical-align:top}
+  .tbl th{text-align:center;font-weight:bold;background:#f2f2f2}
+  .r{text-align:right}.c{text-align:center}.b{font-weight:bold}
+  .req{width:100%;margin-bottom:3px}.req td{padding:2px 4px;vertical-align:bottom;font-size:11px}
+  .u{border-bottom:1px solid #000}.small{font-size:10px;color:#333}
+  h2{text-align:center;margin:10px 0 2px}.sub{text-align:center;margin:0 0 10px;font-size:11px}
+  .code{text-align:right;font-size:10px;margin-bottom:6px}
+  .sign{width:100%;margin-top:26px}.sign td{padding:12px 6px;font-size:11px;vertical-align:bottom}
+  @media print{body{padding:0}.noprint{display:none}}
+  .noprint{max-width:960px;margin:0 auto 14px}.noprint button{padding:9px 18px;font-size:13px;cursor:pointer}
+</style></head><body>
+<div class="noprint"><button onclick="window.print()">🖨 Печать / Сохранить в PDF</button></div>
+<div class="doc">${inner}</div></body></html>`;
+}
+function reqBlock(p){
+  return `<table class="req">
+    <tr><td style="width:120px">Инвестор:</td><td class="u">${xesc(p.investor||"")}</td></tr>
+    <tr><td>Заказчик:</td><td class="u">${xesc(p.customer||"")}</td></tr>
+    <tr><td>Подрядчик:</td><td class="u">${xesc(p.contractor||db.org.name||"")}</td></tr>
+    <tr><td>Стройка:</td><td class="u">${xesc(p.name||"")}</td></tr>
+    <tr><td>Объект:</td><td class="u">${xesc(p.address||"")}</td></tr>
+    <tr><td>Договор подряда:</td><td class="u">№ ${xesc(p.contractNo||"____")} от ${dfmt(p.contractDate)}</td></tr>
+  </table>`;
+}
+function genKS2(actId){
+  const a=db.acts.find(x=>x.id===actId);if(!a)return;const p=db.projects.find(x=>x.id===a.project);
+  const tot=actTotal(a),vat=tot*VAT;
+  const rows=a.lines.map((l,i)=>`<tr>
+    <td class="c">${i+1}</td><td>${xesc(l.name)}</td><td class="c">${xesc(l.section||"")}</td>
+    <td class="c">${xesc(l.unit||"")}</td><td class="r">${nf2.format(l.qty)}</td>
+    <td class="r">${nf2.format(l.price)}</td><td class="r">${nf2.format((l.qty||0)*(l.price||0))}</td></tr>`).join("");
+  const inner=`
+    <div class="code">Унифицированная форма № КС-2<br>Утв. пост. Госкомстата РФ от 11.11.1999 № 100<br>ОКУД 0322005</div>
+    ${reqBlock(p)}
+    <h2>АКТ № ${xesc(a.number)}</h2>
+    <p class="sub">о приёмке выполненных работ<br>за отчётный период с ${dfmt(a.from)} по ${dfmt(a.to)}<br>Дата составления: ${dfmt(a.date)}</p>
+    <table class="tbl">
+      <thead><tr><th style="width:34px">№</th><th>Наименование работ</th><th style="width:60px">Раздел РД</th><th style="width:70px">Ед. изм.</th><th style="width:80px">Кол-во</th><th style="width:90px">Цена за ед., руб.</th><th style="width:110px">Стоимость, руб.</th></tr>
+      <tr class="small"><th class="c">1</th><th class="c">2</th><th class="c">3</th><th class="c">4</th><th class="c">5</th><th class="c">6</th><th class="c">7</th></tr></thead>
+      <tbody>${rows}
+        <tr><td colspan="6" class="r b">Итого:</td><td class="r b">${nf2.format(tot)}</td></tr>
+        <tr><td colspan="6" class="r">В том числе НДС 20%:</td><td class="r">${nf2.format(vat)}</td></tr>
+        <tr><td colspan="6" class="r b">Всего с НДС:</td><td class="r b">${nf2.format(tot+vat)}</td></tr>
+      </tbody>
+    </table>
+    <table class="sign"><tr>
+      <td style="width:50%">Сдал (Подрядчик): ______________________ / ${xesc(p.contractor||db.org.name||"")}<br><span class="small">должность, подпись, расшифровка · М.П.</span></td>
+      <td style="width:50%">Принял (Заказчик): ______________________ / ${xesc(p.customer||"")}<br><span class="small">должность, подпись, расшифровка · М.П.</span></td>
+    </tr></table>`;
+  download("KS-2_akt_"+a.number+"_"+dateSlug()+".html",docWrap("КС-2 № "+a.number,inner),"text/html;charset=utf-8");
+  toast("КС-2 сформирован — откройте файл и печатайте/сохраните в PDF");
+}
+function genKS3(){
+  const p=curProject();const as=actsOf(p.id).sort((a,b)=>a.date-b.date);
+  if(!as.length){toast("Нет актов КС-2 для сводки");return;}
+  const yr=new Date().getFullYear();
+  const totalAll=as.reduce((s,a)=>s+actTotal(a),0);
+  const totalYear=as.filter(a=>new Date(a.date).getFullYear()===yr).reduce((s,a)=>s+actTotal(a),0);
+  const last=as[as.length-1];const totalPeriod=actTotal(last);
+  const vatAll=totalAll*VAT,vatYear=totalYear*VAT,vatPer=totalPeriod*VAT;
+  const inner=`
+    <div class="code">Унифицированная форма № КС-3<br>Утв. пост. Госкомстата РФ от 11.11.1999 № 100<br>ОКУД 0322001</div>
+    ${reqBlock(p)}
+    <h2>СПРАВКА</h2>
+    <p class="sub">о стоимости выполненных работ и затрат<br>Отчётный период по ${dfmt(last.to)} · Дата составления: ${dfmt(now())}</p>
+    <table class="tbl">
+      <thead><tr><th style="width:34px">№</th><th>Наименование пусковых комплексов, объектов, работ и затрат</th><th style="width:120px">С начала проведения работ, руб.</th><th style="width:110px">С начала года, руб.</th><th style="width:120px">В т.ч. за отчётный период, руб.</th></tr></thead>
+      <tbody>
+        <tr><td class="c">1</td><td>Строительно-монтажные работы по договору № ${xesc(p.contractNo||"____")}</td><td class="r">${nf2.format(totalAll)}</td><td class="r">${nf2.format(totalYear)}</td><td class="r">${nf2.format(totalPeriod)}</td></tr>
+        <tr><td colspan="2" class="r b">Итого:</td><td class="r b">${nf2.format(totalAll)}</td><td class="r b">${nf2.format(totalYear)}</td><td class="r b">${nf2.format(totalPeriod)}</td></tr>
+        <tr><td colspan="2" class="r">Сумма НДС 20%:</td><td class="r">${nf2.format(vatAll)}</td><td class="r">${nf2.format(vatYear)}</td><td class="r">${nf2.format(vatPer)}</td></tr>
+        <tr><td colspan="2" class="r b">Всего с учётом НДС:</td><td class="r b">${nf2.format(totalAll+vatAll)}</td><td class="r b">${nf2.format(totalYear+vatYear)}</td><td class="r b">${nf2.format(totalPeriod+vatPer)}</td></tr>
+      </tbody>
+    </table>
+    <p class="small">Основание — акты о приёмке выполненных работ (КС-2): ${as.map(a=>"№ "+xesc(a.number)+" от "+dfmt(a.date)).join(", ")}</p>
+    <table class="sign"><tr>
+      <td style="width:50%">Заказчик: ______________________ / ${xesc(p.customer||"")}<br><span class="small">должность, подпись, расшифровка · М.П.</span></td>
+      <td style="width:50%">Подрядчик: ______________________ / ${xesc(p.contractor||db.org.name||"")}<br><span class="small">должность, подпись, расшифровка · М.П.</span></td>
+    </tr></table>`;
+  download("KS-3_spravka_"+dateSlug()+".html",docWrap("КС-3 справка",inner),"text/html;charset=utf-8");
+  toast("КС-3 сформирована");
+}
+function genKS6(){
+  const p=curProject();const js=journalOf(p.id).sort((a,b)=>a.date-b.date);
+  const rows=js.map((j,i)=>`<tr><td class="c">${i+1}</td><td class="c">${dfmt(j.date)}</td><td class="c">${xesc(j.section||"")}</td><td>${xesc(j.text)}</td><td>${xesc(j.author||"")}</td></tr>`).join("")
+    ||`<tr><td colspan="5" class="c">Записей нет</td></tr>`;
+  const inner=`
+    <div class="code">Унифицированная форма № КС-6<br>Общий журнал работ</div>
+    ${reqBlock(p)}
+    <h2>ЖУРНАЛ ПРОИЗВОДСТВА РАБОТ</h2>
+    <p class="sub">Дата составления: ${dfmt(now())}</p>
+    <table class="tbl">
+      <thead><tr><th style="width:34px">№</th><th style="width:90px">Дата</th><th style="width:70px">Раздел РД</th><th>Наименование выполненных работ</th><th style="width:180px">Ответственный (должность, ФИО, подпись)</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <table class="sign"><tr><td>Ответственный производитель работ: ______________________ / ${xesc(p.contractor||db.org.name||"")}</td></tr></table>`;
+  download("KS-6_zhurnal_"+dateSlug()+".html",docWrap("КС-6 журнал работ",inner),"text/html;charset=utf-8");
+  toast("Журнал КС-6 сформирован");
+}
+
+/* ============================ События: смета/акты ============================ */
+$("#btnNewWork").onclick=()=>openWorkForm(null);
+["wqSearch","wqSection"].forEach(id=>$("#"+id).addEventListener(id==="wqSearch"?"input":"change",renderEstimate));
+$("#expEstCsv").onclick=exportEstimateCSV;
+$("#btnNewAct").onclick=openActForm;
+$("#btnKS3").onclick=genKS3;
+$("#btnActReq").onclick=openActReqForm;
+$("#btnNewJournal").onclick=openJournalForm;
+$("#btnPrintKS6").onclick=genKS6;
+$("#jqSection").addEventListener("change",renderActs);
+$$("#view-acts .plan-tabs button").forEach(b=>b.onclick=()=>{
+  $$("#view-acts .plan-tabs button").forEach(x=>x.classList.toggle("on",x===b));
+  const t=b.dataset.atab;
+  $("#actsTab").classList.toggle("hidden",t!=="acts");
+  $("#journalTab").classList.toggle("hidden",t!=="journal");
+});
 
 /* ============================ Старт ============================ */
 renderProjects();
