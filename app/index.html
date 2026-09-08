@@ -6,11 +6,13 @@
 <title>СтройПлан — управление стройкой на планах</title>
 <style>
   :root{
-    --bg:#0f1115; --panel:#161a21; --panel-2:#1c222b; --line:#262d38;
-    --text:#e8ecf1; --muted:#8b97a7; --accent:#3d8bff; --accent-2:#2b6fe0;
-    --open:#f0a92e; --progress:#3d8bff; --review:#a866f0; --done:#2fbf71; --closed:#6b7684;
-    --danger:#ef4d5a; --radius:12px;
-    --shadow:0 8px 30px rgba(0,0,0,.35);
+    /* Блюпринт-палитра: глубокий чертёжный синий + белые/голубые линии */
+    --bg:#062744; --panel:#0a3560; --panel-2:#0f4173; --line:#1d5c95;
+    --text:#e8f2ff; --muted:#8fb8dd; --accent:#38b6ff; --accent-2:#1f96e0;
+    --open:#ffb74d; --progress:#4dc3ff; --review:#c08bff; --done:#4fe0a0; --closed:#6f92b3;
+    --danger:#ff6b7a; --radius:12px;
+    --blueprint:#0b3f6e; --grid:rgba(120,180,235,.16);
+    --shadow:0 8px 30px rgba(0,10,25,.45);
   }
   *{box-sizing:border-box}
   html,body{height:100%}
@@ -91,13 +93,13 @@
   .tmain .tm{color:var(--muted);font-size:12px;margin-top:2px;display:flex;gap:10px;flex-wrap:wrap}
   .chip{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;white-space:nowrap}
   .dot{width:8px;height:8px;border-radius:50%;display:inline-block}
-  .st-open{background:rgba(240,169,46,.15);color:var(--open)}
-  .st-progress{background:rgba(61,139,255,.15);color:var(--progress)}
-  .st-review{background:rgba(168,102,240,.15);color:var(--review)}
-  .st-done{background:rgba(47,191,113,.15);color:var(--done)}
-  .st-closed{background:rgba(107,118,132,.18);color:var(--closed)}
+  .st-open{background:rgba(255,183,77,.16);color:var(--open)}
+  .st-progress{background:rgba(77,195,255,.16);color:var(--progress)}
+  .st-review{background:rgba(192,139,255,.16);color:var(--review)}
+  .st-done{background:rgba(79,224,160,.16);color:var(--done)}
+  .st-closed{background:rgba(111,146,179,.20);color:var(--closed)}
   .pri{font-size:11px;font-weight:700}
-  .pri-low{color:var(--muted)} .pri-med{color:var(--open)} .pri-high{color:#ff7a3d} .pri-crit{color:var(--danger)}
+  .pri-low{color:var(--muted)} .pri-med{color:var(--open)} .pri-high{color:#ff9a4d} .pri-crit{color:var(--danger)}
   .avatar{width:26px;height:26px;border-radius:50%;background:var(--panel-2);display:grid;place-items:center;font-size:11px;font-weight:700;flex:none;border:1px solid var(--line)}
 
   .empty{text-align:center;color:var(--muted);padding:50px 20px}
@@ -106,7 +108,13 @@
   /* Plan viewer */
   .plan-wrap{display:grid;grid-template-columns:1fr 320px;gap:0;height:calc(100vh - 61px)}
   @media(max-width:1100px){.plan-wrap{grid-template-columns:1fr}}
-  .stage{position:relative;overflow:hidden;background:#0a0c10;background-image:radial-gradient(circle at 1px 1px,#1a2029 1px,transparent 0);background-size:26px 26px}
+  .stage{position:relative;overflow:hidden;background:var(--blueprint);
+    background-image:
+      linear-gradient(var(--grid) 1px,transparent 1px),
+      linear-gradient(90deg,var(--grid) 1px,transparent 1px),
+      linear-gradient(rgba(120,180,235,.07) 1px,transparent 1px),
+      linear-gradient(90deg,rgba(120,180,235,.07) 1px,transparent 1px);
+    background-size:100px 100px,100px 100px,20px 20px,20px 20px}
   .stage.adding{cursor:crosshair}
   .canvas{position:absolute;top:0;left:0;transform-origin:0 0;will-change:transform}
   .canvas img{display:block;max-width:none;user-select:none;-webkit-user-drag:none;box-shadow:0 0 0 1px var(--line)}
@@ -323,19 +331,26 @@
 /* ============================ Модель данных / storage ============================ */
 const KEY="stroyplan_v1";
 const STATUS={
-  open:{l:"Открыта",cls:"st-open",c:"#f0a92e"},
-  progress:{l:"В работе",cls:"st-progress",c:"#3d8bff"},
-  review:{l:"На проверке",cls:"st-review",c:"#a866f0"},
-  done:{l:"Выполнена",cls:"st-done",c:"#2fbf71"},
-  closed:{l:"Закрыта",cls:"st-closed",c:"#6b7684"}
+  open:{l:"Открыта",cls:"st-open",c:"#ffb74d"},
+  progress:{l:"В работе",cls:"st-progress",c:"#4dc3ff"},
+  review:{l:"На проверке",cls:"st-review",c:"#c08bff"},
+  done:{l:"Выполнена",cls:"st-done",c:"#4fe0a0"},
+  closed:{l:"Закрыта",cls:"st-closed",c:"#6f92b3"}
 };
 const PRIORITY={low:{l:"Низкий",cls:"pri-low"},med:{l:"Средний",cls:"pri-med"},high:{l:"Высокий",cls:"pri-high"},crit:{l:"Критический",cls:"pri-crit"}};
 const TYPES={defect:"Дефект",task:"Задача",inspection:"Осмотр"};
 
 /* Встроенный SVG «план этажа» (используется в демо-данных) */
 const FLOORPLAN_SVG=`<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="700" viewBox="0 0 1000 700">
-<rect width="1000" height="700" fill="#f4f1ea"/>
-<g stroke="#2b2b2b" stroke-width="7" fill="none">
+<defs>
+<pattern id="bp-grid" width="25" height="25" patternUnits="userSpaceOnUse">
+<path d="M25 0H0V25" fill="none" stroke="#5b9bd6" stroke-width="1" opacity="0.28"/>
+</pattern>
+</defs>
+<rect width="1000" height="700" fill="#0d4d84"/>
+<rect width="1000" height="700" fill="url(#bp-grid)"/>
+<rect x="10" y="10" width="980" height="680" fill="none" stroke="#bcdcff" stroke-width="2" opacity="0.6"/>
+<g stroke="#eaf4ff" stroke-width="7" fill="none" stroke-linecap="square">
 <rect x="60" y="60" width="880" height="580"/>
 <line x1="420" y1="60" x2="420" y2="360"/>
 <line x1="420" y1="360" x2="60" y2="360"/>
@@ -343,13 +358,13 @@ const FLOORPLAN_SVG=`<svg xmlns="http://www.w3.org/2000/svg" width="1000" height
 <line x1="700" y1="230" x2="700" y2="640"/>
 <line x1="700" y1="450" x2="940" y2="450"/>
 </g>
-<g stroke="#2b2b2b" stroke-width="7">
-<line x1="200" y1="60" x2="280" y2="60" stroke="#f4f1ea"/>
-<line x1="420" y1="150" x2="420" y2="210" stroke="#f4f1ea"/>
-<line x1="700" y1="300" x2="700" y2="360" stroke="#f4f1ea"/>
-<line x1="530" y1="360" x2="600" y2="360" stroke="#f4f1ea"/>
+<g stroke="#0d4d84" stroke-width="9">
+<line x1="200" y1="60" x2="280" y2="60"/>
+<line x1="420" y1="150" x2="420" y2="210"/>
+<line x1="700" y1="300" x2="700" y2="360"/>
+<line x1="530" y1="360" x2="600" y2="360"/>
 </g>
-<g fill="#8a8a8a" font-family="Arial" font-size="22">
+<g fill="#bcdcff" font-family="Arial" font-size="22" letter-spacing="1">
 <text x="180" y="215">Гостиная</text>
 <text x="180" y="510">Кухня</text>
 <text x="520" y="150">Спальня 1</text>
@@ -357,8 +372,8 @@ const FLOORPLAN_SVG=`<svg xmlns="http://www.w3.org/2000/svg" width="1000" height
 <text x="760" y="360">Санузел</text>
 <text x="760" y="560">Коридор</text>
 </g>
-<g fill="#c9c2b4" font-family="Arial" font-size="16">
-<text x="60" y="45">1</text><text x="420" y="45">2</text><text x="700" y="45">3</text><text x="940" y="45">4</text>
+<g fill="#7fb4e8" font-family="Arial" font-size="16">
+<text x="56" y="46">1</text><text x="416" y="46">2</text><text x="696" y="46">3</text><text x="932" y="46">4</text>
 </g>
 </svg>`;
 
@@ -450,10 +465,10 @@ function renderDashboard(){
   const pct=ts.length?Math.round(doneAll/ts.length*100):0;
   const crit=ts.filter(t=>t.priority==="crit"&&t.status!=="done"&&t.status!=="closed").length;
   $("#statGrid").innerHTML=`
-    ${stat(ts.length,"Всего задач","#3d8bff",100)}
-    ${stat(openActive,"В работе","#f0a92e",ts.length?openActive/ts.length*100:0)}
-    ${stat(pct+"%","Готовность","#2fbf71",pct)}
-    ${stat(crit,"Критичных открыто",crit?"#ef4d5a":"#6b7684",crit?100:6)}`;
+    ${stat(ts.length,"Всего задач","#38b6ff",100)}
+    ${stat(openActive,"В работе","#ffb74d",ts.length?openActive/ts.length*100:0)}
+    ${stat(pct+"%","Готовность","#4fe0a0",pct)}
+    ${stat(crit,"Критичных открыто",crit?"#ff6b7a":"#6f92b3",crit?100:6)}`;
   const recent=[...ts].sort((a,b)=>b.created-a.created).slice(0,6);
   $("#recentList").innerHTML=recent.length?recent.map(ticketRow).join(""):emptyBlock("Пока нет задач");
   bindRows($("#recentList"));
@@ -543,7 +558,7 @@ function pinHTML(t){
   const c=STATUS[t.status].c;
   const sel=ui.selectedPin===t.id?"sel":"";
   return `<div class="pin ${sel}" data-ticket="${t.id}" style="left:${t.x}%;top:${t.y}%">
-    <svg width="30" height="40" viewBox="0 0 30 40"><path d="M15 0C6.7 0 0 6.7 0 15c0 10 15 25 15 25s15-15 15-25C30 6.7 23.3 0 15 0z" fill="${c}" stroke="#00000033"/></svg>
+    <svg width="30" height="40" viewBox="0 0 30 40"><path d="M15 0C6.7 0 0 6.7 0 15c0 10 15 25 15 25s15-15 15-25C30 6.7 23.3 0 15 0z" fill="${c}" stroke="#ffffff" stroke-width="1.6"/></svg>
     <span class="pnum">${t.code}</span>
   </div>`;
 }
