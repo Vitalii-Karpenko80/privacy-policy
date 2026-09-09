@@ -265,12 +265,14 @@
       <button class="navitem active" data-view="dashboard"><span class="ic">▦</span> Обзор</button>
       <button class="navitem" data-view="plan"><span class="ic">🗺</span> План <span class="badge" id="nb-plan">0</span></button>
       <button class="navitem" data-view="tickets"><span class="ic">✓</span> Задачи <span class="badge" id="nb-tickets">0</span></button>
+      <button class="navitem" data-view="checklists"><span class="ic">☑</span> Чек-листы <span class="badge" id="nb-check">0</span></button>
       <button class="navitem" data-view="estimate"><span class="ic">📐</span> Смета · себест. <span class="badge" id="nb-est">0</span></button>
       <button class="navitem" data-view="schedule"><span class="ic">📅</span> График работ</button>
       <button class="navitem" data-view="acts"><span class="ic">📃</span> Акты и КС <span class="badge" id="nb-acts">0</span></button>
       <button class="navitem" data-view="purchases"><span class="ic">🧾</span> Закупки <span class="badge" id="nb-purch">0</span></button>
       <button class="navitem" data-view="tenders"><span class="ic">📢</span> Тендеры <span class="badge" id="nb-tend">0</span></button>
       <button class="navitem" data-view="contracts"><span class="ic">📑</span> Договоры <span class="badge" id="nb-contr">0</span></button>
+      <button class="navitem" data-view="documents"><span class="ic">📂</span> Документы <span class="badge" id="nb-docs">0</span></button>
       <button class="navitem" data-view="team"><span class="ic">👥</span> Команда</button>
       <button class="navitem" data-view="history"><span class="ic">🕘</span> История проектов</button>
       <button class="navitem" data-view="integrations"><span class="ic">🔌</span> Интеграции</button>
@@ -360,6 +362,7 @@
             <option value="review">На проверке</option>
             <option value="done">Выполнена</option>
             <option value="closed">Закрыта</option>
+            <option value="overdue">⚠ Просроченные</option>
           </select>
           <select id="fType">
             <option value="">Все типы</option>
@@ -373,6 +376,7 @@
             <option value="old">Сначала старые</option>
             <option value="pri">По приоритету</option>
           </select>
+          <button class="btn ghost sm" id="btnDefectReport">🖨 Ведомость замечаний</button>
         </div>
         <div class="panel">
           <div class="list-hd"><span style="width:64px">Код</span><span style="flex:1">Задача</span><span>Статус</span></div>
@@ -474,6 +478,30 @@
         </div>
       </section>
 
+      <!-- Checklists / inspections -->
+      <section class="view" id="view-checklists">
+        <div class="filters">
+          <input id="chSearch" placeholder="Поиск по чек-листам…">
+          <select id="chStatus"><option value="">Все</option><option value="progress">В работе</option><option value="done">Завершён</option></select>
+          <button class="btn sm" id="btnNewChecklist">＋ Провести чек-лист</button>
+        </div>
+        <div id="checklistGrid" class="grid-cards"></div>
+      </section>
+
+      <!-- Documents -->
+      <section class="view" id="view-documents">
+        <div class="filters">
+          <input id="dqSearch" placeholder="Поиск по документам…">
+          <select id="dqCat"><option value="">Все категории</option></select>
+          <select id="dqStatus"><option value="">Все статусы</option></select>
+          <button class="btn sm" id="btnNewDoc">＋ Документ</button>
+        </div>
+        <div class="panel">
+          <div class="list-hd"><span style="flex:1">Документ</span><span style="width:190px">Категория</span><span style="width:70px;text-align:center">Верс.</span><span style="width:150px">Статус</span></div>
+          <div id="docList" class="tlist"></div>
+        </div>
+      </section>
+
       <!-- History -->
       <section class="view" id="view-history">
         <div class="cols">
@@ -540,7 +568,8 @@
           <div class="g-scale" id="schedScale">
             <button data-sc="week">Недели</button><button data-sc="month" class="on">Месяцы</button><button data-sc="quarter">Кварталы</button>
           </div>
-          <button class="btn ghost sm" id="btnSchedCsv">⭳ График в CSV</button>
+          <button class="btn ghost sm" id="btnSchedCsv">⭳ CSV</button>
+          <button class="btn ghost sm" id="btnSchedXml">⭳ XML (MS Project)</button>
         </div>
         <div class="panel">
           <div class="ph"><h3>График строительства</h3><div style="flex:1"></div>
@@ -595,7 +624,9 @@
 <input type="file" id="fileInput" accept="image/*" class="hidden">
 <input type="file" id="fileInputData" accept="application/json,.json" class="hidden">
 <input type="file" id="fileInputPhoto" accept="image/*" multiple class="hidden">
+<input type="file" id="fileInputDoc" class="hidden">
 
+<script src="qrcode.js"></script>
 <script>
 "use strict";
 /* ============================ Модель данных / storage ============================ */
@@ -634,6 +665,16 @@ const TSTATUS={
   closed:{l:"Закрыт",cls:"st-review",c:"#c08bff"}
 };
 const CONTRACT_TYPES=["Генподряд","Субподряд","Поставка","Услуги","Аренда","Прочее"];
+/* Чек-листы: шаблоны и статусы пунктов */
+const CHECK_ITEM={ok:{l:"ОК",c:"#4fe0a0"},fail:{l:"Нарушение",c:"#ff6b7a"},na:{l:"Н/П",c:"#6f92b3"},none:{l:"—",c:"#6f92b3"}};
+const CHECKLIST_TEMPLATES=[
+  {name:"Приёмка выполненных работ",type:"Приёмка",items:["Соответствие проекту (РД)","Геометрия и отметки в допуске","Качество поверхностей","Отсутствие дефектов и трещин","Исполнительная документация оформлена","Скрытые работы освидетельствованы"]},
+  {name:"Охрана труда и ТБ",type:"Охрана труда",items:["Ограждения опасных зон установлены","СИЗ у работников в наличии","Леса/подмости исправны, есть акт","Электробезопасность соблюдена","Пожарная безопасность (огнетушители, проходы)","Порядок на рабочих местах"]},
+  {name:"Осмотр оборудования",type:"Осмотр",items:["Внешнее состояние без повреждений","Крепления и соединения в норме","Отсутствие утечек","Показания приборов в норме","Наличие маркировки/паспорта","Плановое ТО выполнено"]},
+  {name:"Входной контроль материалов",type:"Входной контроль",items:["Соответствие сертификатам/паспортам","Целостность упаковки","Количество соответствует накладной","Условия хранения соблюдены","Отсутствие брака"]}
+];
+const DOC_CATEGORIES=["Рабочая документация","Проектная документация","Исполнительная документация","Договоры","Сертификаты и паспорта","Акты","Фото","Прочее"];
+const DOC_STATUS={draft:{l:"Черновик",cls:"st-closed",c:"#6f92b3"},review:{l:"На согласовании",cls:"st-open",c:"#ffb74d"},approved:{l:"Утверждён",cls:"st-done",c:"#4fe0a0"},rejected:{l:"Отклонён",cls:"st-review",c:"#ff6b7a"}};
 const CSTATUS={draft:{l:"Черновик",cls:"st-closed",c:"#6f92b3"},active:{l:"Действует",cls:"st-done",c:"#4fe0a0"},closed:{l:"Закрыт",cls:"st-review",c:"#c08bff"}};
 const INTEGRATIONS=[
   {id:"1c",name:"1С:Бухгалтерия",color:"#f7d417",desc:"Обмен документами поступления и счетами (выгрузка XML/CommerceML).",fields:["Адрес базы / публикации","Логин","Пароль"]},
@@ -738,6 +779,8 @@ function migrate(d){
   d.buildings=d.buildings||[];
   d.contracts=d.contracts||[];
   d.issues=d.issues||[];
+  d.checklists=d.checklists||[];
+  d.documents=d.documents||[];
   d.org=d.org||{name:"",inn:"",kpp:""};
   (d.projects||[]).forEach(pr=>{if(pr.budget==null)pr.budget=0;});
   if(!d.integrations){d.integrations={};INTEGRATIONS.forEach(i=>d.integrations[i.id]={enabled:false,cfg:{}});}
@@ -756,6 +799,9 @@ function journalOf(pid){return db.journal.filter(j=>j.project===pid)}
 function buildingsOf(pid){return db.buildings.filter(b=>b.project===pid)}
 function contractsOf(pid){return db.contracts.filter(c=>c.project===pid)}
 function issuesOf(pid){return db.issues.filter(i=>i.project===pid)}
+function checklistsOf(pid){return db.checklists.filter(c=>c.project===pid)}
+function documentsOf(pid){return db.documents.filter(d=>d.project===pid)}
+function isOverdue(t){return !!(t.due&&t.due<now()&&t.status!=="done"&&t.status!=="closed")}
 function buildingName(id){const b=db.buildings.find(x=>x.id===id);return b?b.name:"— без привязки —"}
 function supplierName(id){const s=db.suppliers.find(x=>x.id===id);return s?s.name:(id||"—")}
 function contractTotal(c){return (c.specs||[]).reduce((s,r)=>s+(r.qty||0)*(r.price||0),0)||(c.amount||0)}
@@ -796,7 +842,7 @@ function seed(){
   const T=(o)=>Object.assign({id:uid("t"),project:pid,plan:plan1.id,photos:[],activity:[],created:now()-Math.random()*8e8},o);
   const tickets=[
     T({code:1,title:"Трещина в несущей стене, оси 2-3",type:"defect",status:"open",priority:"crit",assignee:m1,desc:"Обнаружена вертикальная трещина ~40 см у оконного проёма. Требуется заключение конструктора.",x:23,y:34,due:now()+3*864e5}),
-    T({code:2,title:"Не установлены розетки в кухне",type:"task",status:"progress",priority:"med",assignee:m3,desc:"Смонтировать 6 розеток по проекту электрики.",x:64,y:28}),
+    T({code:2,title:"Не установлены розетки в кухне",type:"task",status:"progress",priority:"med",assignee:m3,desc:"Смонтировать 6 розеток по проекту электрики.",x:64,y:28,due:now()-2*864e5}),
     T({code:3,title:"Проверить гидроизоляцию санузла",type:"inspection",status:"review",priority:"high",assignee:m2,desc:"Контроль перед укладкой плитки.",x:78,y:62}),
     T({code:4,title:"Затереть швы на стяжке",type:"defect",status:"done",priority:"low",assignee:m1,desc:"",x:40,y:70}),
     T({code:5,title:"Демонтаж временной перегородки",type:"task",status:"closed",priority:"low",assignee:m3,desc:"",x:52,y:48})
@@ -898,6 +944,17 @@ function seed(){
     {id:uid("is"),project:pid,item:"Бетон B25 (М350)",unit:"м³",qty:30,date:now()-1e8,note:"Перекрытие 6 этажа"},
     {id:uid("is"),project:pid,item:"Гипсокартон КНАУФ 12.5мм",unit:"шт",qty:50,date:now()-4e7,note:"Перегородки 2 этаж"}
   ];
+  // Чек-листы (демо)
+  const checklists=[
+    {id:uid("ck"),project:pid,title:"Приёмка стяжки, 3 этаж",type:"Приёмка",buildingId:b1,status:"progress",by:"Виталий К.",created:now()-2e8,
+     items:[{text:"Соответствие проекту (РД)",status:"ok",note:""},{text:"Геометрия и отметки в допуске",status:"ok",note:""},{text:"Качество поверхностей",status:"fail",note:"Трещина у оси 3"},{text:"Отсутствие дефектов и трещин",status:"fail",note:""},{text:"Исполнительная документация оформлена",status:"na",note:""},{text:"Скрытые работы освидетельствованы",status:"none",note:""}]}
+  ];
+  // Документы (демо)
+  const documents=[
+    {id:uid("dc"),project:pid,name:"Планировка типового этажа",cat:"Рабочая документация",buildingId:b1,status:"approved",approver:"Анна С.",created:now()-9e9,versions:[{v:1,at:now()-1e10,note:"Первичная выдача",file:null,fname:""},{v:2,at:now()-9e9,note:"Корректировка по замечаниям",file:null,fname:""}]},
+    {id:uid("dc"),project:pid,name:"Узлы КЖ (армирование)",cat:"Рабочая документация",buildingId:b1,status:"review",approver:"Виталий К.",created:now()-2e9,versions:[{v:1,at:now()-2e9,note:"На согласование",file:null,fname:""}]},
+    {id:uid("dc"),project:pid,name:"Паспорт на бетон B25",cat:"Сертификаты и паспорта",buildingId:b1,status:"approved",approver:"",created:now()-2e8,versions:[{v:1,at:now()-2e8,note:"",file:null,fname:""}]}
+  ];
   // Акт КС-2 (демо)
   const acts=[{id:uid("act"),project:pid,number:"1",kind:"КС-2",date:now()-6e8,from:now()-9e8,to:now()-6e8,
     lines:[
@@ -918,7 +975,7 @@ function seed(){
 
   return {currentProject:pid,seq:6,
     projects:[mainProject,archProject],
-    plans:[plan1],tickets,suppliers,purchases,tenders,works,acts,journal,buildings,contracts,issues,org,integrations};
+    plans:[plan1],tickets,suppliers,purchases,tenders,works,acts,journal,buildings,contracts,issues,checklists,documents,org,integrations};
 }
 
 /* ============================ Утилиты рендера ============================ */
@@ -944,7 +1001,7 @@ function setView(v){
   ui.view=v;
   $$(".navitem").forEach(b=>b.classList.toggle("active",b.dataset.view===v));
   $$(".view").forEach(s=>s.classList.toggle("active",s.id==="view-"+v));
-  const titles={dashboard:"Обзор",plan:"План",tickets:"Задачи",estimate:"Смета и себестоимость",schedule:"График строительства",acts:"Акты и формы КС",purchases:"Закупки",tenders:"Тендеры",contracts:"Договоры и спецификации",team:"Команда",history:"История проектов",integrations:"Интеграции с бухгалтерией"};
+  const titles={dashboard:"Обзор",plan:"План",tickets:"Задачи",checklists:"Чек-листы и инспекции",estimate:"Смета и себестоимость",schedule:"График строительства",acts:"Акты и формы КС",purchases:"Закупки",tenders:"Тендеры",contracts:"Договоры и спецификации",documents:"Документы",team:"Команда",history:"История проектов",integrations:"Интеграции с бухгалтерией"};
   $("#viewTitle").textContent=titles[v];
   const p=curProject();
   const orgWide=(v==="history"||v==="integrations");
@@ -955,6 +1012,8 @@ function setView(v){
   if(v==="team")renderTeam();
   if(v==="purchases")renderPurchases();
   if(v==="tenders")renderTenders();
+  if(v==="checklists")renderChecklists();
+  if(v==="documents")renderDocuments();
   if(v==="contracts")renderContracts();
   if(v==="estimate")renderEstimate();
   if(v==="schedule")renderSchedule();
@@ -973,11 +1032,13 @@ function renderDashboard(){
   const doneAll=counts.done+counts.closed;
   const pct=ts.length?Math.round(doneAll/ts.length*100):0;
   const crit=ts.filter(t=>t.priority==="crit"&&t.status!=="done"&&t.status!=="closed").length;
+  const overdueN=ts.filter(isOverdue).length;
   $("#statGrid").innerHTML=`
     ${stat(ts.length,"Всего задач","#38b6ff",100)}
     ${stat(openActive,"В работе","#ffb74d",ts.length?openActive/ts.length*100:0)}
     ${stat(pct+"%","Готовность","#4fe0a0",pct)}
-    ${stat(crit,"Критичных открыто",crit?"#ff6b7a":"#6f92b3",crit?100:6)}`;
+    ${stat(crit,"Критичных открыто",crit?"#ff6b7a":"#6f92b3",crit?100:6)}
+    ${stat(overdueN,"Просрочено",overdueN?"#ff6b7a":"#6f92b3",overdueN?100:6)}`;
   const recent=[...ts].sort((a,b)=>b.created-a.created).slice(0,6);
   $("#recentList").innerHTML=recent.length?recent.map(ticketRow).join(""):emptyBlock("Пока нет задач");
   bindRows($("#recentList"));
@@ -1045,7 +1106,7 @@ function ticketRow(t){
         <span>${TYPES[t.type]}</span>
         <span class="pri ${pr.cls}">● ${pr.l}</span>
         <span>${memberName(t.project,t.assignee)}</span>
-        ${t.due?`<span>до ${fmtDate(t.due)}</span>`:""}
+        ${t.due?`<span style="${isOverdue(t)?'color:var(--danger);font-weight:600':''}">${isOverdue(t)?"⚠ просрочено ":"до "}${fmtDate(t.due)}</span>`:""}
         ${t.photos.length?`<span>📷 ${t.photos.length}</span>`:""}
       </div>
     </div>
@@ -1065,7 +1126,7 @@ function renderTickets(){
   const q=$("#fSearch").value.toLowerCase().trim();
   const fs=$("#fStatus").value,ft=$("#fType").value,fa=$("#fAssignee").value,sort=$("#fSort").value;
   if(q)ts=ts.filter(t=>t.title.toLowerCase().includes(q)||("#"+t.code).includes(q));
-  if(fs)ts=ts.filter(t=>t.status===fs);
+  if(fs==="overdue")ts=ts.filter(isOverdue);else if(fs)ts=ts.filter(t=>t.status===fs);
   if(ft)ts=ts.filter(t=>t.type===ft);
   if(fa)ts=ts.filter(t=>t.assignee===fa);
   const prio={crit:0,high:1,med:2,low:3};
@@ -1261,6 +1322,7 @@ function openTicket(id){
     <div class="mh">
       <span class="tcode" style="width:auto">#${t.code}</span>
       <h3>${esc(t.title)}</h3>
+      <button class="btn ghost sm" id="d-qr" title="QR-код задачи">▦</button>
       <button class="btn ghost sm" id="d-edit">✎</button>
       <button class="x" onclick="closeModal()">×</button>
     </div>
@@ -1304,6 +1366,7 @@ function openTicket(id){
     openTicket(id);refreshAll();if(ui.view==="plan")renderPlan();
   });
   $("#d-edit").onclick=()=>openTicketForm(id);
+  $("#d-qr").onclick=()=>showTicketQR(t);
   $("#d-del").onclick=()=>{if(confirm("Удалить задачу?")){db.tickets=db.tickets.filter(x=>x.id!==id);save();closeModal();refreshAll();if(ui.view==="plan")renderPlan();toast("Удалено");}};
   const gp=$("#d-goplan");if(gp)gp.onclick=()=>{closeModal();ui.currentPlan=t.plan;ui.selectedPin=t.id;setView("plan");setTimeout(()=>{ui.selectedPin=null;const pl=curPlan();if(pl)drawCanvas(pl);},1800);};
   $("#d-send").onclick=()=>{const v=$("#d-comment").value.trim();if(!v)return;logAct(t,"comment",": "+v);save();openTicket(id);};
@@ -1423,6 +1486,8 @@ function updateBadges(){
   $("#nb-est").textContent=worksOf(pid).length;
   $("#nb-acts").textContent=actsOf(pid).length;
   $("#nb-contr").textContent=contractsOf(pid).length;
+  $("#nb-check").textContent=checklistsOf(pid).filter(c=>c.status!=="done").length;
+  $("#nb-docs").textContent=documentsOf(pid).length;
 }
 function refreshAll(){renderDashboard();renderTickets();updateBadges();}
 
@@ -2592,6 +2657,210 @@ $$("#view-contracts .plan-tabs button").forEach(b=>b.onclick=()=>{
   const t=b.dataset.ctab;$("#contractsTab").classList.toggle("hidden",t!=="contracts");$("#buildingsTab").classList.toggle("hidden",t!=="buildings");
   if(t==="buildings")renderBuildings();else renderContracts();
 });
+
+/* ============================ QR-КОДЫ ============================ */
+function makeQR(text){try{const qr=qrcode(0,"M");qr.addData(text);qr.make();return qr.createDataURL(6,8);}catch(e){return "";}}
+function showTicketQR(t){
+  const p=curProject();
+  const payload="СтройПлан | Задача #"+t.code+" | "+t.title+" | "+(p?p.name:"")+" | Статус: "+STATUS[t.status].l;
+  const url=makeQR(payload);
+  showModal(`
+    <div class="mh"><h3>QR-код · задача #${t.code}</h3><button class="x" onclick="closeModal()">×</button></div>
+    <div class="mb" style="text-align:center">
+      ${url?`<img src="${url}" alt="QR" style="width:240px;height:240px;image-rendering:pixelated;background:#fff;border-radius:10px;padding:8px">`:emptyBlock("Не удалось сгенерировать QR")}
+      <div style="margin-top:12px;font-weight:600">#${t.code} · ${esc(t.title)}</div>
+      <div class="small" style="color:var(--muted);font-size:12px;margin-top:6px">Разместите ярлык на объекте/оборудовании — при сканировании отобразится информация о задаче.</div>
+    </div>
+    <div class="mf"><div class="spacer"></div><button class="btn ghost" id="qr-print">🖨 Печать ярлыка</button><button class="btn" onclick="closeModal()">Закрыть</button></div>
+  `);
+  $("#qr-print").onclick=()=>{const inner=`<div style="text-align:center;font-family:Arial"><img src="${url}" style="width:300px;height:300px;image-rendering:pixelated"><h2 style="margin:10px 0 2px">Задача #${xesc(String(t.code))}</h2><div style="font-size:15px">${xesc(t.title)}</div><div style="color:#555;margin-top:4px">${xesc(p?p.name:"")}</div></div>`;
+    download("QR_zadacha_"+t.code+".html",docWrap("QR задача #"+t.code,inner),"text/html;charset=utf-8");};
+}
+function genDefectReport(){
+  const p=curProject();const list=[...ticketsOf(p.id)].sort((a,b)=>a.code-b.code);
+  if(!list.length){toast("Нет задач для ведомости");return;}
+  const openN=list.filter(t=>t.status!=="done"&&t.status!=="closed").length;
+  const rows=list.map((t,i)=>`<tr><td class="c">${i+1}</td><td class="c">#${t.code}</td><td>${xesc(t.title)}${t.desc?`<div class="small">${xesc(t.desc)}</div>`:""}</td><td class="c">${TYPES[t.type]}</td><td class="c">${PRIORITY[t.priority].l}</td><td>${xesc(memberName(t.project,t.assignee))}</td><td class="c">${t.due?dfmt(t.due):"—"}</td><td class="c">${STATUS[t.status].l}</td></tr>`).join("");
+  const inner=`
+    <div class="code">Форма для внутреннего учёта</div>
+    ${reqBlock(p)}
+    <h2>ВЕДОМОСТЬ ЗАМЕЧАНИЙ И ЗАДАЧ</h2>
+    <p class="sub">Дата: ${dfmt(now())} · Всего: ${list.length}, из них не устранено: ${openN}</p>
+    <table class="tbl"><thead><tr><th style="width:34px">№</th><th style="width:50px">Код</th><th>Наименование / описание</th><th style="width:70px">Тип</th><th style="width:80px">Приоритет</th><th style="width:120px">Ответственный</th><th style="width:80px">Срок</th><th style="width:90px">Статус</th></tr></thead><tbody>${rows}</tbody></table>
+    <table class="sign"><tr><td>Составил: ______________________</td><td>Проверил: ______________________</td></tr></table>`;
+  download("vedomost_zamechaniy_"+dateSlug()+".html",docWrap("Ведомость замечаний",inner),"text/html;charset=utf-8");
+  toast("Ведомость сформирована");
+}
+function exportScheduleXML(){
+  const p=curProject();const ws=worksOf(p.id).filter(w=>w.start&&w.end);
+  if(!ws.length){toast("Нет работ с датами");return;}
+  const iso=ts=>new Date(ts).toISOString().slice(0,19);
+  const tasks=ws.map((w,i)=>`  <Task><UID>${i+1}</UID><ID>${i+1}</ID><Name>${xesc((w.section?w.section+": ":"")+w.name)}</Name><Start>${iso(w.start)}</Start><Finish>${iso(w.end)}</Finish><PercentComplete>${Math.round(wDonePct(w))}</PercentComplete><Duration>PT${Math.max(1,Math.round((w.end-w.start)/36e5))}H0M0S</Duration></Task>`).join("\n");
+  const xml=`<?xml version="1.0" encoding="UTF-8"?>\n<Project xmlns="http://schemas.microsoft.com/project"><Name>${xesc(p.name)}</Name><Tasks>\n${tasks}\n</Tasks></Project>`;
+  download("grafik_"+dateSlug()+".xml",xml,"application/xml;charset=utf-8");toast("График выгружен в XML");
+}
+
+/* ============================ ЧЕК-ЛИСТЫ / ИНСПЕКЦИИ ============================ */
+function chStats(c){const it=c.items||[];const done=it.filter(i=>i.status&&i.status!=="none").length;const fail=it.filter(i=>i.status==="fail").length;const ok=it.filter(i=>i.status==="ok").length;return {done,fail,ok,total:it.length,pct:it.length?done/it.length*100:0};}
+function renderChecklists(){
+  const p=curProject();if(!p)return;
+  let list=checklistsOf(p.id);
+  const q=$("#chSearch").value.toLowerCase().trim(),fs=$("#chStatus").value;
+  if(q)list=list.filter(c=>c.title.toLowerCase().includes(q));
+  if(fs)list=list.filter(c=>c.status===fs);
+  list.sort((a,b)=>b.created-a.created);
+  $("#checklistGrid").innerHTML=list.length?list.map(c=>{const s=chStats(c);const col=s.fail?'var(--danger)':'var(--done)';
+    return `<div class="card click" data-c="${c.id}">
+      <div class="crow"><div class="ct">${esc(c.title)}</div>${c.status==="done"?'<span class="chip st-done">Завершён</span>':'<span class="chip st-progress">В работе</span>'}</div>
+      <div class="cmeta"><span>${esc(c.type||"")}</span>${c.buildingId?`<span>🏢 ${esc(buildingName(c.buildingId))}</span>`:""}<span>${fmtDate(c.created)}</span></div>
+      <div class="crow"><span style="color:var(--muted);font-size:12px">Пройдено ${s.done}/${s.total}${s.fail?` · ⚠ нарушений ${s.fail}`:""}</span><span class="money" style="color:${col}">${s.pct.toFixed(0)}%</span></div>
+      <div class="stat bar" style="margin:0;height:6px;background:var(--panel-2)"><i style="width:${s.pct}%;background:${col}"></i></div>
+    </div>`;}).join(""):emptyBlock("Нет чек-листов — проведите инспекцию или приёмку");
+  $$("#checklistGrid .card").forEach(c=>c.onclick=()=>openChecklist(c.dataset.c));
+  updateBadges();
+}
+function openNewChecklist(){
+  const p=curProject();
+  showModal(`
+    <div class="mh"><h3>Новый чек-лист</h3><button class="x" onclick="closeModal()">×</button></div>
+    <div class="mb">
+      <div class="field"><label>Шаблон</label><select id="nk-tpl">${CHECKLIST_TEMPLATES.map((t,i)=>`<option value="${i}">${t.name} (${t.items.length} пунктов)</option>`).join("")}<option value="blank">— пустой —</option></select></div>
+      <div class="field"><label>Название</label><input id="nk-title" value="${esc(CHECKLIST_TEMPLATES[0].name)}"></div>
+      <div class="field"><label>Здание / объект</label><select id="nk-bld"><option value="">— без привязки —</option>${buildingsOf(p.id).map(b=>`<option value="${b.id}">${esc(b.name)}</option>`).join("")}</select></div>
+    </div>
+    <div class="mf"><div class="spacer"></div><button class="btn ghost" onclick="closeModal()">Отмена</button><button class="btn" id="nk-save">Создать</button></div>
+  `);
+  $("#nk-tpl").onchange=()=>{const v=$("#nk-tpl").value;if(v!=="blank")$("#nk-title").value=CHECKLIST_TEMPLATES[+v].name;};
+  $("#nk-save").onclick=()=>{
+    const v=$("#nk-tpl").value;const title=$("#nk-title").value.trim()||"Чек-лист";
+    const tpl=v==="blank"?{type:"Прочее",items:["Пункт 1"]}:CHECKLIST_TEMPLATES[+v];
+    const c={id:uid("ck"),project:p.id,title,type:tpl.type,buildingId:$("#nk-bld").value||null,status:"progress",by:"Вы",created:now(),
+      items:tpl.items.map(x=>({text:x,status:"none",note:""}))};
+    db.checklists.push(c);save();closeModal();openChecklist(c.id);renderChecklists();
+  };
+  setTimeout(()=>$("#nk-title").focus(),50);
+}
+function openChecklist(id){
+  const c=db.checklists.find(x=>x.id===id);if(!c)return;const s=chStats(c);
+  const rows=(c.items||[]).map((it,i)=>`<div style="padding:10px 0;border-bottom:1px solid var(--line)">
+    <div style="display:flex;gap:10px;align-items:flex-start">
+      <div style="flex:1"><div style="font-size:14px">${i+1}. ${esc(it.text)}</div></div>
+      <div style="display:flex;gap:4px">
+        ${["ok","fail","na"].map(k=>`<button class="btn ghost sm ci" data-i="${i}" data-k="${k}" style="${it.status===k?`background:${CHECK_ITEM[k].c};border-color:${CHECK_ITEM[k].c};color:#04101f`:""}">${CHECK_ITEM[k].l}</button>`).join("")}
+      </div>
+    </div>
+    <input class="cin" data-i="${i}" value="${esc(it.note||"")}" placeholder="комментарий…" style="width:100%;margin-top:6px;background:var(--panel-2);border:1px solid var(--line);color:var(--text);border-radius:8px;padding:7px 10px;font-size:13px">
+  </div>`).join("");
+  showModal(`
+    <div class="mh"><h3>${esc(c.title)}</h3><button class="x" onclick="closeModal()">×</button></div>
+    <div class="mb">
+      <div class="det-top">${c.status==="done"?'<span class="chip st-done">Завершён</span>':'<span class="chip st-progress">В работе</span>'}<span class="chip" style="background:var(--panel-2);color:var(--text)">${esc(c.type||"")}</span>${c.buildingId?`<span class="chip" style="background:var(--panel-2);color:var(--text)">🏢 ${esc(buildingName(c.buildingId))}</span>`:""}</div>
+      <div class="meta-grid"><div class="meta"><div class="k">Пройдено</div><div class="v">${s.done}/${s.total} (${s.pct.toFixed(0)}%)</div></div><div class="meta"><div class="k">Нарушений</div><div class="v" style="color:${s.fail?'var(--danger)':'var(--done)'}">${s.fail}</div></div></div>
+      ${rows}
+    </div>
+    <div class="mf"><button class="btn danger" id="ck-del">Удалить</button><div class="spacer"></div><button class="btn ghost" id="ck-report">🖨 Отчёт</button><button class="btn ghost" id="ck-additem">＋ пункт</button><button class="btn" id="ck-done">${c.status==="done"?"Вернуть в работу":"Завершить"}</button></div>
+  `,true);
+  $$("#modal .ci").forEach(b=>b.onclick=()=>{const it=c.items[+b.dataset.i];it.status=it.status===b.dataset.k?"none":b.dataset.k;save();openChecklist(id);renderChecklists();});
+  $$("#modal .cin").forEach(inp=>inp.onchange=()=>{c.items[+inp.dataset.i].note=inp.value;save();});
+  $("#ck-additem").onclick=()=>{const t=prompt("Текст пункта:");if(t){c.items.push({text:t.trim(),status:"none",note:""});save();openChecklist(id);}};
+  $("#ck-done").onclick=()=>{c.status=c.status==="done"?"progress":"done";save();openChecklist(id);renderChecklists();};
+  $("#ck-del").onclick=()=>{if(confirm("Удалить чек-лист?")){db.checklists=db.checklists.filter(x=>x.id!==id);save();closeModal();renderChecklists();}};
+  $("#ck-report").onclick=()=>genChecklistReport(id);
+}
+function genChecklistReport(id){
+  const c=db.checklists.find(x=>x.id===id);const p=projById(c.project);const s=chStats(c);
+  const rows=(c.items||[]).map((it,i)=>`<tr><td class="c">${i+1}</td><td>${xesc(it.text)}</td><td class="c" style="color:${CHECK_ITEM[it.status||'none'].c};font-weight:bold">${CHECK_ITEM[it.status||'none'].l}</td><td>${xesc(it.note||"")}</td></tr>`).join("");
+  const inner=`${reqBlock(p)}<h2>ЧЕК-ЛИСТ: ${xesc(c.title)}</h2>
+    <p class="sub">${xesc(c.type||"")}${c.buildingId?" · "+xesc(buildingName(c.buildingId)):""} · Дата: ${dfmt(c.created)}<br>Пройдено ${s.done}/${s.total} (${s.pct.toFixed(0)}%), нарушений: ${s.fail}</p>
+    <table class="tbl"><thead><tr><th style="width:34px">№</th><th>Пункт проверки</th><th style="width:110px">Результат</th><th style="width:220px">Комментарий</th></tr></thead><tbody>${rows}</tbody></table>
+    <table class="sign"><tr><td>Проверку провёл: ______________ / ${xesc(c.by||"")}</td><td>Согласовано: ______________</td></tr></table>`;
+  download("cheklist_"+dateSlug()+".html",docWrap("Чек-лист "+c.title,inner),"text/html;charset=utf-8");toast("Отчёт по чек-листу готов");
+}
+
+/* ============================ ДОКУМЕНТЫ ============================ */
+function renderDocuments(){
+  const p=curProject();if(!p)return;
+  const cs=$("#dqCat");if(cs.options.length<=1)cs.innerHTML=`<option value="">Все категории</option>`+DOC_CATEGORIES.map(c=>`<option>${c}</option>`).join("");
+  const ss=$("#dqStatus");if(ss.options.length<=1)ss.innerHTML=`<option value="">Все статусы</option>`+Object.entries(DOC_STATUS).map(([k,v])=>`<option value="${k}">${v.l}</option>`).join("");
+  let list=documentsOf(p.id);
+  const q=$("#dqSearch").value.toLowerCase().trim();
+  if(q)list=list.filter(d=>d.name.toLowerCase().includes(q));
+  if(cs.value)list=list.filter(d=>d.cat===cs.value);
+  if(ss.value)list=list.filter(d=>d.status===ss.value);
+  list.sort((a,b)=>b.created-a.created);
+  $("#docList").innerHTML=list.length?list.map(d=>{const v=(d.versions||[]).length||1;
+    return `<div class="trow" data-d="${d.id}">
+      <div class="tmain" style="flex:1"><div class="tt">${esc(d.name)}</div><div class="tm">${d.buildingId?`<span>🏢 ${esc(buildingName(d.buildingId))}</span>`:""}<span>${fmtDate(d.created)}</span>${d.approver?`<span>согл.: ${esc(d.approver)}</span>`:""}</div></div>
+      <div style="width:190px;color:var(--muted);font-size:12px">${esc(d.cat||"—")}</div>
+      <div style="width:70px;text-align:center">v${v}</div>
+      <div style="width:150px">${statusChipG(DOC_STATUS,d.status)}</div>
+    </div>`;}).join(""):emptyBlock("Нет документов");
+  $$("#docList .trow").forEach(r=>r.onclick=()=>openDocument(r.dataset.d));
+  updateBadges();
+}
+function openDocument(id){
+  const d=db.documents.find(x=>x.id===id);if(!d)return;
+  const vers=[...(d.versions||[])].sort((a,b)=>b.v-a.v);
+  showModal(`
+    <div class="mh"><h3>${esc(d.name)}</h3><button class="btn ghost sm" id="dc-edit">✎</button><button class="x" onclick="closeModal()">×</button></div>
+    <div class="mb">
+      <div class="det-top">${statusChipG(DOC_STATUS,d.status)}<span class="chip" style="background:var(--panel-2);color:var(--text)">${esc(d.cat||"")}</span>${d.buildingId?`<span class="chip" style="background:var(--panel-2);color:var(--text)">🏢 ${esc(buildingName(d.buildingId))}</span>`:""}</div>
+      <div class="status-picker" id="dc-status">${Object.entries(DOC_STATUS).map(([k,v])=>`<button data-s="${k}" class="${k===d.status?"on":""}" style="${k===d.status?`background:${v.c};border-color:${v.c}`:""}">${v.l}</button>`).join("")}</div>
+      <div class="field" style="margin-top:14px"><label>Версии (${vers.length})</label>
+        <div class="activity">${vers.map(v=>`<div class="act"><div class="avatar" style="width:26px;height:26px;font-size:10px">v${v.v}</div><div style="flex:1"><b>Версия ${v.v}</b> ${esc(v.note||"")} ${v.fname?`· <a href="${v.file||'#'}" download="${esc(v.fname)}" style="color:var(--accent)">${esc(v.fname)}</a>`:""}</div><div class="at">${fmtRel(v.at)}</div></div>`).join("")||`<div style="color:var(--muted)">Нет версий</div>`}</div>
+      </div>
+    </div>
+    <div class="mf"><button class="btn danger" id="dc-del">Удалить</button><div class="spacer"></div><button class="btn ghost" id="dc-addver">＋ Новая версия</button><button class="btn" onclick="closeModal()">Закрыть</button></div>
+  `,true);
+  $$("#dc-status button").forEach(b=>b.onclick=()=>{d.status=b.dataset.s;save();openDocument(id);renderDocuments();});
+  $("#dc-edit").onclick=()=>openDocForm(id);
+  $("#dc-del").onclick=()=>{if(confirm("Удалить документ?")){db.documents=db.documents.filter(x=>x.id!==id);save();closeModal();renderDocuments();}};
+  $("#dc-addver").onclick=()=>{const note=prompt("Комментарий к версии:","")||"";docVerTarget={id,note};$("#fileInputDoc").value="";
+    if(confirm("Прикрепить файл к версии? OK — выбрать файл, Отмена — версия без файла")){$("#fileInputDoc").click();}
+    else{addDocVersion(id,note,null,"");}};
+}
+let docVerTarget=null;
+function addDocVersion(id,note,file,fname){
+  const d=db.documents.find(x=>x.id===id);if(!d)return;
+  const nv=((d.versions||[]).reduce((m,v)=>Math.max(m,v.v),0))+1;
+  d.versions=d.versions||[];d.versions.push({v:nv,at:now(),note,file,fname});
+  d.status="review";save();openDocument(id);renderDocuments();toast("Версия "+nv+" добавлена");
+}
+$("#fileInputDoc").addEventListener("change",function(){const f=this.files[0];if(!f||!docVerTarget){return;}
+  if(f.size>3e6){toast("Файл >3 МБ — сохраняю только имя, без содержимого");addDocVersion(docVerTarget.id,docVerTarget.note,null,f.name);docVerTarget=null;this.value="";return;}
+  const r=new FileReader();r.onload=()=>{addDocVersion(docVerTarget.id,docVerTarget.note,r.result,f.name);docVerTarget=null;};r.readAsDataURL(f);this.value="";});
+function openDocForm(id){
+  const p=curProject();const e=id?db.documents.find(x=>x.id===id):null;
+  const d=e||{name:"",cat:"Рабочая документация",buildingId:buildingsOf(p.id)[0]?.id||null,status:"draft",approver:""};
+  showModal(`
+    <div class="mh"><h3>${e?"Документ":"Новый документ"}</h3><button class="x" onclick="closeModal()">×</button></div>
+    <div class="mb">
+      <div class="field"><label>Название</label><input id="df-name" value="${esc(d.name||"")}"></div>
+      <div class="field-row">
+        <div class="field"><label>Категория</label><select id="df-cat">${DOC_CATEGORIES.map(c=>`<option ${c===d.cat?"selected":""}>${c}</option>`).join("")}</select></div>
+        <div class="field"><label>Статус</label><select id="df-status">${Object.entries(DOC_STATUS).map(([k,v])=>`<option value="${k}" ${k===d.status?"selected":""}>${v.l}</option>`).join("")}</select></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Здание / объект</label><select id="df-bld"><option value="">— без привязки —</option>${buildingsOf(p.id).map(b=>`<option value="${b.id}" ${b.id===d.buildingId?"selected":""}>${esc(b.name)}</option>`).join("")}</select></div>
+        <div class="field"><label>Согласующий</label><input id="df-appr" value="${esc(d.approver||"")}"></div>
+      </div>
+    </div>
+    <div class="mf"><div class="spacer"></div><button class="btn ghost" onclick="closeModal()">Отмена</button><button class="btn" id="df-save">Сохранить</button></div>
+  `);
+  $("#df-save").onclick=()=>{const name=$("#df-name").value.trim();if(!name){toast("Введите название");return;}
+    const o={name,cat:$("#df-cat").value,status:$("#df-status").value,buildingId:$("#df-bld").value||null,approver:$("#df-appr").value.trim()};
+    if(e){Object.assign(e,o);}else{db.documents.push(Object.assign({id:uid("dc"),project:p.id,created:now(),versions:[{v:1,at:now(),note:"Создан",file:null,fname:""}]},o));}
+    save();closeModal();renderDocuments();toast("Сохранено");};
+  setTimeout(()=>$("#df-name").focus(),50);
+}
+
+/* события: чек-листы/документы/QR/отчёты */
+$("#btnDefectReport").onclick=genDefectReport;
+$("#btnSchedXml").onclick=exportScheduleXML;
+$("#btnNewChecklist").onclick=openNewChecklist;
+["chSearch","chStatus"].forEach(id=>$("#"+id).addEventListener(id==="chSearch"?"input":"change",renderChecklists));
+$("#btnNewDoc").onclick=()=>openDocForm(null);
+["dqSearch","dqCat","dqStatus"].forEach(id=>$("#"+id).addEventListener(id==="dqSearch"?"input":"change",renderDocuments));
 
 /* ============================ Старт ============================ */
 renderProjects();
