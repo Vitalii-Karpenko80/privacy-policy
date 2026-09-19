@@ -8,7 +8,7 @@ import SiteMemoryCore
 /// This is a straightforward reference implementation (one JSON document per
 /// collection). When embedded in FieldReport, prefer conforming FieldReport's
 /// existing database to the Core store protocols instead of running this.
-public actor FileStore: ProjectStore, PhotoStore {
+public actor FileStore: ProjectStore, PhotoStore, DocumentStore {
     private let rootURL: URL
     private let fileManager: FileManager
     private let encoder = JSONEncoder()
@@ -21,13 +21,17 @@ public actor FileStore: ProjectStore, PhotoStore {
         encoder.dateEncodingStrategy = .iso8601
         decoder.dateDecodingStrategy = .iso8601
         try fileManager.createDirectory(at: imagesDirectory, withIntermediateDirectories: true)
+        try fileManager.createDirectory(at: documentsDirectory, withIntermediateDirectories: true)
     }
 
     private var metadataURL: URL { rootURL.appendingPathComponent("sitememory.json") }
     private var imagesDirectory: URL { rootURL.appendingPathComponent("images", isDirectory: true) }
+    private var documentsDirectory: URL { rootURL.appendingPathComponent("documents", isDirectory: true) }
 
     // A single serialized document. Fine for the data volumes a per-device
     // jobsite archive produces; swap for SQLite/SwiftData if it ever isn't.
+    // New collections are optional-decoded via defaults so older snapshots
+    // written before document support still load.
     private struct Snapshot: Codable {
         var projects: [Project] = []
         var buildings: [Building] = []
@@ -35,6 +39,29 @@ public actor FileStore: ProjectStore, PhotoStore {
         var rooms: [Room] = []
         var walls: [Wall] = []
         var photos: [SitePhoto] = []
+        var documents: [ProjectDocument] = []
+        var sheets: [PlanSheet] = []
+        var placements: [PlanPlacement] = []
+
+        init() {}
+
+        // Decode every collection leniently so a snapshot written by an older
+        // build (before documents/sheets/placements existed) still loads.
+        init(from decoder: Decoder) throws {
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            func list<T: Decodable>(_ key: CodingKeys, _: T.Type) throws -> [T] {
+                try c.decodeIfPresent([T].self, forKey: key) ?? []
+            }
+            projects = try list(.projects, Project.self)
+            buildings = try list(.buildings, Building.self)
+            floors = try list(.floors, Floor.self)
+            rooms = try list(.rooms, Room.self)
+            walls = try list(.walls, Wall.self)
+            photos = try list(.photos, SitePhoto.self)
+            documents = try list(.documents, ProjectDocument.self)
+            sheets = try list(.sheets, PlanSheet.self)
+            placements = try list(.placements, PlanPlacement.self)
+        }
     }
 
     private var cached: Snapshot?
@@ -136,5 +163,52 @@ public actor FileStore: ProjectStore, PhotoStore {
             throw StoreError.imageDataUnavailable
         }
         return try Data(contentsOf: url)
+    }
+
+    // MARK: DocumentStore
+    public func documents(in project: ID<Project>) throws -> [ProjectDocument] {
+        try load().documents.filter { $0.projectID == project }.sorted { $0.importedAt < $1.importedAt }
+    }
+    public func save(_ document: ProjectDocument) throws {
+        var s = try load(); s.documents.removeAll { $0.id == document.id }
+        s.documents.append(document); try persist(s)
+    }
+    public func delete(_ id: ID<ProjectDocument>) throws {
+        var s = try load(); s.documents.removeAll { $0.id == id }; try persist(s)
+    }
+
+    public func storeDocumentData(_ data: Data, suggestedName: String) throws -> DocumentReference {
+        let name = "\(UUID().uuidString)-\(suggestedName)"
+        let url = documentsDirectory.appendingPathComponent(name)
+        try data.write(to: url, options: .atomic)
+        return .appContainer(relativePath: "documents/\(name)")
+    }
+    public func documentData(for reference: DocumentReference) throws -> Data {
+        guard case let .appContainer(path) = reference else { throw StoreError.imageDataUnavailable }
+        let url = rootURL.appendingPathComponent(path)
+        guard fileManager.fileExists(atPath: url.path) else { throw StoreError.imageDataUnavailable }
+        return try Data(contentsOf: url)
+    }
+
+    public func sheets(in document: ID<ProjectDocument>) throws -> [PlanSheet] {
+        try load().sheets.filter { $0.documentID == document }.sorted { $0.pageIndex < $1.pageIndex }
+    }
+    public func save(_ sheet: PlanSheet) throws {
+        var s = try load(); s.sheets.removeAll { $0.id == sheet.id }
+        s.sheets.append(sheet); try persist(s)
+    }
+    public func delete(_ id: ID<PlanSheet>) throws {
+        var s = try load(); s.sheets.removeAll { $0.id == id }; try persist(s)
+    }
+
+    public func placements(on sheet: ID<PlanSheet>) throws -> [PlanPlacement] {
+        try load().placements.filter { $0.sheetID == sheet }
+    }
+    public func save(_ placement: PlanPlacement) throws {
+        var s = try load(); s.placements.removeAll { $0.id == placement.id }
+        s.placements.append(placement); try persist(s)
+    }
+    public func delete(_ id: ID<PlanPlacement>) throws {
+        var s = try load(); s.placements.removeAll { $0.id == id }; try persist(s)
     }
 }

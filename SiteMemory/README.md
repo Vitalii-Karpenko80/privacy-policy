@@ -36,7 +36,8 @@ higher price than a generic utility.
 |---|---|---|---|
 | **SiteMemoryCore** | — | Foundation only | Domain model, units & geometry, the planar measurement engine, and every protocol (stores, search, spatial, host bridge). Fully unit-tested, portable. |
 | **SiteMemoryPersistence** | Core | Foundation | Local-first stores: `InMemoryStore` (previews/tests) and `FileStore` (standalone default). Nothing leaves the app container. |
-| **SiteMemoryVision** | Core | Vision, CoreImage | On-device semantic photo search. `#if canImport(Vision)`. |
+| **SiteMemoryVision** | Core | Vision, CoreGraphics | On-device semantic photo search. `#if canImport(Vision)`. |
+| **SiteMemoryDocuments** | Core | PDFKit, ImageIO | Renders imported project PDFs into calibratable pages. `#if canImport(PDFKit)`. |
 | **SiteMemoryARKit** | Core | ARKit | LiDAR/world-map spatial anchors — the "point the phone at the finished wall" overlay. `#if canImport(ARKit)`. |
 | **SiteMemoryUI** | Core | SwiftUI | Thin, optional views + the `WallMemoryViewModel`. `#if canImport(SwiftUI)`. |
 
@@ -62,6 +63,28 @@ Its assumptions (roughly fronto-parallel shot, lens distortion ignored) are
 documented in code and reflected in a `confidence` on every result, so the UI
 stays honest. **v2** swaps the engine's guts for an ARKit 3D solve behind the
 *same* `SpatialAnchoring` contract — no caller changes.
+
+---
+
+## Project PDFs & pinning photos with dimensions
+
+The contractor imports the project drawings as a **PDF** (`ProjectDocument`,
+copied into the app container — never uploaded anywhere). A page is promoted to
+a `PlanSheet` and **calibrated** by tapping two points a known distance apart
+(a dimension line, a door width, the scale bar). That calibration is a plain
+`ReferenceScale` — the exact same type used on wall photos — so the *same*
+`PlanarMeasurementEngine` powers the floor plan too; `PlanMeasurementEngine` is
+just a thin, semantic wrapper (`PlanMeasurementEngine`).
+
+Once calibrated, a photo (or a wall) is **pinned** on the plan as a
+`PlanPlacement`, and every pin resolves to a real location:
+
+> *Photo — 3.20 m × 1.50 m on the Level 2 plan*
+
+and the real distance between any two pins is available too. PDF rasterization
+runs entirely on-device via `SiteMemoryDocuments` (PDFKit), behind the Core
+`DocumentRendering` protocol so the app and tests never link PDFKit directly.
+`DocumentStore` persists the PDF bytes, the calibrated sheets and the pins.
 
 ---
 
@@ -98,8 +121,10 @@ skips the bridge. SiteMemory never imports FieldReport in either mode.
 
 ## Roadmap
 
-1. **MVP** — hierarchy, capture, two-tap reference measurement, offline search,
-   PDF section. (Types, engine and tests for this are in place here.)
+1. **MVP** — hierarchy, capture, two-tap reference measurement, **project-PDF
+   import + calibrated floor plans with photos pinned by real dimensions**,
+   offline search, PDF report section. (Types, engines and tests for this are in
+   place here.)
 2. **v2 — LiDAR/ARKit** — spatial anchors + live "x-ray" overlay via
    `SpatialAnchoring` / `relocalize`.
 3. **v3 — richer AI** — Core ML model trained on rough-in photos; LLM parsing of

@@ -23,6 +23,8 @@ let package = Package(
         .library(name: "SiteMemoryPersistence", targets: ["SiteMemoryPersistence"]),
         // On-device semantic photo search via the Vision framework.
         .library(name: "SiteMemoryVision", targets: ["SiteMemoryVision"]),
+        // Renders imported project PDFs (plans) for calibration + pinning.
+        .library(name: "SiteMemoryDocuments", targets: ["SiteMemoryDocuments"]),
         // LiDAR / ARKit spatial anchors (the v2 "point the phone at the wall" story).
         .library(name: "SiteMemoryARKit", targets: ["SiteMemoryARKit"]),
         // Optional SwiftUI surface: capture flow + "behind this wall" overlay.
@@ -40,6 +42,10 @@ let package = Package(
         ),
         .target(
             name: "SiteMemoryVision",
+            dependencies: ["SiteMemoryCore"]
+        ),
+        .target(
+            name: "SiteMemoryDocuments",
             dependencies: ["SiteMemoryCore"]
         ),
         .target(
