@@ -24,4 +24,9 @@ public protocol DocumentStore: Sendable {
     func placements(on sheet: ID<PlanSheet>) async throws -> [PlanPlacement]
     func save(_ placement: PlanPlacement) async throws
     func delete(_ id: ID<PlanPlacement>) async throws
+
+    // Comparison markers (planned + as-built) on a sheet
+    func markers(on sheet: ID<PlanSheet>) async throws -> [PlanMarker]
+    func save(_ marker: PlanMarker) async throws
+    func delete(_ id: ID<PlanMarker>) async throws
 }

@@ -42,6 +42,7 @@ public actor FileStore: ProjectStore, PhotoStore, DocumentStore {
         var documents: [ProjectDocument] = []
         var sheets: [PlanSheet] = []
         var placements: [PlanPlacement] = []
+        var markers: [PlanMarker] = []
 
         init() {}
 
@@ -61,6 +62,7 @@ public actor FileStore: ProjectStore, PhotoStore, DocumentStore {
             documents = try list(.documents, ProjectDocument.self)
             sheets = try list(.sheets, PlanSheet.self)
             placements = try list(.placements, PlanPlacement.self)
+            markers = try list(.markers, PlanMarker.self)
         }
     }
 
@@ -210,5 +212,16 @@ public actor FileStore: ProjectStore, PhotoStore, DocumentStore {
     }
     public func delete(_ id: ID<PlanPlacement>) throws {
         var s = try load(); s.placements.removeAll { $0.id == id }; try persist(s)
+    }
+
+    public func markers(on sheet: ID<PlanSheet>) throws -> [PlanMarker] {
+        try load().markers.filter { $0.sheetID == sheet }
+    }
+    public func save(_ marker: PlanMarker) throws {
+        var s = try load(); s.markers.removeAll { $0.id == marker.id }
+        s.markers.append(marker); try persist(s)
+    }
+    public func delete(_ id: ID<PlanMarker>) throws {
+        var s = try load(); s.markers.removeAll { $0.id == id }; try persist(s)
     }
 }

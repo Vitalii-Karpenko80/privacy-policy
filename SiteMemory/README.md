@@ -88,6 +88,32 @@ runs entirely on-device via `SiteMemoryDocuments` (PDFKit), behind the Core
 
 ---
 
+## Project vs reality (as-built overlay)
+
+Everything on a calibrated sheet reduces to categorized points, so comparing the
+design to what was actually built is a geometric matching problem. A `PlanMarker`
+carries a `source` — `.planned` (from the drawings) or `.asBuilt` (from the
+site) — and `PlanComparisonEngine.compare` overlays the two:
+
+- **matched** — built where planned; each pair reports the real **deviation**
+  and whether it is `within tolerance` (per-marker, or a default like 50 mm);
+- **missing** — planned, but nothing built/found nearby;
+- **extra** — built, but not on the plan.
+
+Matching is greedy nearest-first within a max distance and (optionally) the same
+category. The result yields a headline **completion %**, the **worst deviation**,
+and a draw-ready `overlayElements()` set. `PlanComparisonView` renders it on the
+plan: hollow ring = planned, filled dot = as-built, a connector line labelled
+with the deviation, colour-coded (green on-plan · orange out-of-tolerance ·
+red missing · purple off-plan).
+
+As-built markers can be entered directly *or* derived automatically from the
+photos already pinned on the plan
+(`PlanComparisonEngine.asBuiltMarkers(fromPhotoPlacements:photos:)`), so the
+pinning feature feeds the comparison for free. All on-device; no new dependency.
+
+---
+
 ## How search works (offline first, AI second)
 
 A natural-language question becomes a structured `SiteQuery`, run through the
@@ -123,8 +149,8 @@ skips the bridge. SiteMemory never imports FieldReport in either mode.
 
 1. **MVP** — hierarchy, capture, two-tap reference measurement, **project-PDF
    import + calibrated floor plans with photos pinned by real dimensions**,
-   offline search, PDF report section. (Types, engines and tests for this are in
-   place here.)
+   **project-vs-reality (as-built) overlay with deviations**, offline search,
+   PDF report section. (Types, engines and tests for this are in place here.)
 2. **v2 — LiDAR/ARKit** — spatial anchors + live "x-ray" overlay via
    `SpatialAnchoring` / `relocalize`.
 3. **v3 — richer AI** — Core ML model trained on rough-in photos; LLM parsing of

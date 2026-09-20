@@ -14,6 +14,7 @@ public actor InMemoryStore: ProjectStore, PhotoStore, DocumentStore {
     private var documentsByID: [ID<ProjectDocument>: ProjectDocument] = [:]
     private var sheetsByID: [ID<PlanSheet>: PlanSheet] = [:]
     private var placementsByID: [ID<PlanPlacement>: PlanPlacement] = [:]
+    private var markersByID: [ID<PlanMarker>: PlanMarker] = [:]
     private var documentBlobs: [String: Data] = [:]
 
     public init() {}
@@ -94,4 +95,10 @@ public actor InMemoryStore: ProjectStore, PhotoStore, DocumentStore {
     }
     public func save(_ placement: PlanPlacement) { placementsByID[placement.id] = placement }
     public func delete(_ id: ID<PlanPlacement>) { placementsByID[id] = nil }
+
+    public func markers(on sheet: ID<PlanSheet>) -> [PlanMarker] {
+        markersByID.values.filter { $0.sheetID == sheet }
+    }
+    public func save(_ marker: PlanMarker) { markersByID[marker.id] = marker }
+    public func delete(_ id: ID<PlanMarker>) { markersByID[id] = nil }
 }
