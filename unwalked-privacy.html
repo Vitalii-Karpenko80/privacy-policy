@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Privacy Policy – Unwalked</title>
+    <style>
+        :root {
+            --text: #35483E;
+            --muted: #5d6b63;
+            --bg: #F7F5EF;
+            --surface: #ffffff;
+            --accent: #4f7a5f;
+            --accent-soft: #eef3ef;
+            --accent-line: #cfdcd3;
+            --line: #e3e0d6;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
+                         Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            line-height: 1.65;
+        }
+        .container {
+            max-width: 820px;
+            margin: 0 auto;
+            padding: 32px 20px 72px;
+        }
+        h1 { font-size: 28px; margin: 8px 0 4px; font-family: Georgia, "Times New Roman", serif; }
+        h2 {
+            font-size: 20px;
+            margin-top: 36px;
+            margin-bottom: 10px;
+            padding-bottom: 6px;
+            border-bottom: 1px solid var(--line);
+        }
+        p { margin: 10px 0; }
+        ul { margin: 10px 0 10px 20px; padding: 0; }
+        li { margin-bottom: 6px; }
+        a { color: var(--accent); }
+        .meta { color: var(--muted); font-size: 14px; margin-top: 2px; }
+        .lang-switch { margin: 20px 0 4px; }
+        .lang-switch button {
+            font: inherit;
+            font-size: 14px;
+            padding: 7px 16px;
+            margin: 0 8px 8px 0;
+            border: 1px solid var(--line);
+            background: var(--surface);
+            color: var(--text);
+            border-radius: 999px;
+            cursor: pointer;
+        }
+        .lang-switch button.active {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: #fff;
+        }
+        .note {
+            background: var(--accent-soft);
+            border: 1px solid var(--accent-line);
+            border-radius: 10px;
+            padding: 12px 16px;
+            margin: 16px 0;
+            font-size: 15px;
+        }
+        .footer {
+            margin-top: 48px;
+            padding-top: 16px;
+            border-top: 1px solid var(--line);
+            font-size: 14px;
+            color: var(--muted);
+        }
+        section[hidden] { display: none; }
+    </style>
+</head>
+<body>
+<div class="container">
+
+    <div class="lang-switch">
+        <button id="btn-en" class="active" onclick="setLang('en')">English</button>
+        <button id="btn-uk" onclick="setLang('uk')">Українська</button>
+        <button id="btn-ru" onclick="setLang('ru')">Русский</button>
+    </div>
+
+    <!-- ============ ENGLISH ============ -->
+    <section id="en">
+        <h1>Privacy Policy</h1>
+        <p class="meta"><strong>Unwalked</strong> (iOS) · Effective date: 12 October 2026</p>
+
+        <p>
+            <strong>Unwalked</strong> helps parents plan and record walks with their child and
+            keep a family journal of the places they discover. This Policy explains which data
+            the app uses, where it is kept and who can see it.
+        </p>
+
+        <div class="note">
+            In short: everything you record in Unwalked — walks, routes, notes, photos and your
+            child's profile — is stored <strong>only on your iPhone</strong>. The developer has no
+            servers, accounts or analytics and <strong>receives none of your data</strong>.
+        </div>
+
+        <h2>1. Data the app uses</h2>
+        <ul>
+            <li><strong>Location.</strong> Used to centre the map and plan routes from where you are, and during a
+                walk you started to record the path you walk.</li>
+            <li><strong>Walks.</strong> Start and end time, duration, distance, the walked path (simplified), coarse
+                explored areas (squares of about 25 m), street names along the way, and the city, neighbourhood and
+                country where the walk took place.</li>
+            <li><strong>Journal.</strong> Titles, notes, "special moment" marks, favourite places and the photos you
+                choose to add.</li>
+            <li><strong>Child profile (optional).</strong> Your child's name, birth date and photo — only if you enter them.</li>
+            <li><strong>Settings.</strong> Theme, stroller mode and whether to keep route lines.</li>
+        </ul>
+
+        <h2>2. Where the data is stored</h2>
+        <ul>
+            <li>All data is stored <strong>locally</strong> in the app's private storage on your iPhone and is
+                encrypted by iOS when the device is locked.</li>
+            <li>It may be included in your <strong>iCloud or computer backups</strong>, according to your iOS
+                settings. The developer has no access to them.</li>
+            <li>Deleting the app deletes its data from the device.</li>
+        </ul>
+
+        <h2>3. Location</h2>
+        <ul>
+            <li>Unwalked asks only for <strong>"While Using the App"</strong> access and never for "Always".</li>
+            <li>While a walk you started is being recorded, location keeps updating when the screen is locked or
+                the app is in the background. iOS shows a <strong>blue location indicator</strong> during this time.
+                Recording stops when you finish or discard the walk.</li>
+            <li>You can turn off <strong>Keep route lines</strong> in Profile: then only the coarse ~25 m squares are
+                kept, enough to colour the map, and saved route lines are deleted.</li>
+        </ul>
+
+        <h2>4. Apple services</h2>
+        <p>
+            The map, walking routes, the search for parks and playgrounds and the names of streets and places are
+            provided by <strong>Apple Maps</strong>. To provide them, your device sends the relevant coordinates to
+            Apple. This is handled by Apple under the
+            <a href="https://www.apple.com/legal/privacy/" rel="noopener">Apple Privacy Policy</a>; the developer
+            does not receive these requests. Unwalked uses no other third-party services.
+        </p>
+
+        <h2>5. Photos</h2>
+        <p>
+            Photos are chosen with the iOS photo picker, so the app sees only the photos you select and needs no
+            access to your library. Each photo is resized and re-saved inside the app; this removes the location
+            and other metadata embedded by the camera.
+        </p>
+
+        <h2>6. What the app does NOT do</h2>
+        <ul>
+            <li>no user accounts or registration;</li>
+            <li>no analytics, tracking, advertising or advertising identifiers;</li>
+            <li>no developer servers — nothing is sent to the developer;</li>
+            <li>no selling or sharing of data with anyone.</li>
+        </ul>
+
+        <h2>7. Children</h2>
+        <p>
+            Unwalked is meant to be used by parents and carers. Information about a child (name, birth date, photos)
+            is entered by the parent, stays on the parent's device and is never collected by the developer. The app is
+            not directed at children.
+        </p>
+
+        <h2>8. Purchases</h2>
+        <p>
+            Unwalked Plus is bought and paid for through the Apple App Store. The app has no access to payment details;
+            your subscription status is checked on the device with Apple's StoreKit.
+        </p>
+
+        <h2>9. Your control</h2>
+        <ul>
+            <li>View, edit and delete any walk, note, photo or favourite place in the app.</li>
+            <li>In Profile → Privacy &amp; data: delete all walks, delete the child profile and photo, or delete
+                everything.</li>
+            <li>Change or withdraw location access at any time in iOS Settings → Unwalked.</li>
+        </ul>
+
+        <h2>10. Changes</h2>
+        <p>We may update this Policy. The current version is always published on this page with its effective date.</p>
+
+        <div class="footer">
+            Developer: Vitalii Karpenko · Contact: <strong>karpenko.v80@gmail.com</strong>
+        </div>
+    </section>
+
+    <!-- ============ УКРАЇНСЬКА ============ -->
+    <section id="uk" hidden>
+        <h1>Політика конфіденційності</h1>
+        <p class="meta"><strong>Unwalked</strong> (iOS) · Дата набрання чинності: 12 жовтня 2026 р.</p>
+
+        <p>
+            <strong>Unwalked</strong> допомагає батькам планувати й записувати прогулянки з дитиною та вести
+            сімейний щоденник місць, які вони відкривають. Ця Політика пояснює, які дані використовує застосунок,
+            де вони зберігаються і хто їх бачить.
+        </p>
+
+        <div class="note">
+            Коротко: усе, що ви записуєте в Unwalked, — прогулянки, маршрути, нотатки, фото та профіль дитини —
+            зберігається <strong>лише на вашому iPhone</strong>. Розробник не має серверів, облікових записів чи
+            аналітики й <strong>не отримує жодних ваших даних</strong>.
+        </div>
+
+        <h2>1. Які дані використовує застосунок</h2>
+        <ul>
+            <li><strong>Геолокація.</strong> Щоб показати карту й побудувати маршрут від місця, де ви є, а під час
+                розпочатої вами прогулянки — щоб записати пройдений шлях.</li>
+            <li><strong>Прогулянки.</strong> Час початку й завершення, тривалість, відстань, пройдений шлях
+                (спрощений), загальні досліджені ділянки (квадрати приблизно 25 м), назви вулиць на шляху, а також
+                місто, район і країна прогулянки.</li>
+            <li><strong>Щоденник.</strong> Назви, нотатки, позначки «особливий момент», улюблені місця та фото, які ви
+                додаєте.</li>
+            <li><strong>Профіль дитини (необов'язково).</strong> Ім'я, дата народження й фото дитини — лише якщо ви їх
+                вкажете.</li>
+            <li><strong>Налаштування.</strong> Тема, режим коляски та збереження ліній маршрутів.</li>
+        </ul>
+
+        <h2>2. Де зберігаються дані</h2>
+        <ul>
+            <li>Усі дані зберігаються <strong>локально</strong> в захищеному сховищі застосунку на вашому iPhone і
+                шифруються iOS, коли пристрій заблоковано.</li>
+            <li>Вони можуть потрапляти до <strong>резервних копій iCloud або комп'ютера</strong> відповідно до
+                налаштувань iOS. Розробник не має до них доступу.</li>
+            <li>Видалення застосунку видаляє його дані з пристрою.</li>
+        </ul>
+
+        <h2>3. Геолокація</h2>
+        <ul>
+            <li>Unwalked запитує доступ лише <strong>«Під час використання»</strong> і ніколи не запитує «Завжди».</li>
+            <li>Поки записується розпочата вами прогулянка, геолокація оновлюється й тоді, коли екран заблоковано
+                або застосунок у фоні. У цей час iOS показує <strong>синій індикатор геолокації</strong>. Запис
+                припиняється, коли ви завершуєте або скасовуєте прогулянку.</li>
+            <li>У Профілі можна вимкнути <strong>«Зберігати лінії маршрутів»</strong>: тоді залишаються лише загальні
+                квадрати ~25 м для розфарбування карти, а збережені лінії маршрутів видаляються.</li>
+        </ul>
+
+        <h2>4. Сервіси Apple</h2>
+        <p>
+            Карту, пішохідні маршрути, пошук парків і дитячих майданчиків, а також назви вулиць і місць надає
+            <strong>Apple Maps</strong>. Для цього пристрій надсилає Apple відповідні координати. Ці запити обробляє
+            Apple відповідно до
+            <a href="https://www.apple.com/legal/privacy/" rel="noopener">Політики конфіденційності Apple</a>;
+            розробник їх не отримує. Інших сторонніх сервісів Unwalked не використовує.
+        </p>
+
+        <h2>5. Фото</h2>
+        <p>
+            Фото обираються через системне вікно вибору фото iOS, тож застосунок бачить лише вибрані вами знімки й не
+            потребує доступу до всієї медіатеки. Кожне фото зменшується й зберігається в застосунку заново — при цьому
+            видаляються геодані та інші метадані, додані камерою.
+        </p>
+
+        <h2>6. Чого застосунок НЕ робить</h2>
+        <ul>
+            <li>не створює облікових записів і не вимагає реєстрації;</li>
+            <li>не використовує аналітику, трекінг, рекламу чи рекламні ідентифікатори;</li>
+            <li>не має серверів розробника — нічого не надсилається розробнику;</li>
+            <li>не продає і нікому не передає дані.</li>
+        </ul>
+
+        <h2>7. Діти</h2>
+        <p>
+            Unwalked призначений для батьків і опікунів. Інформацію про дитину (ім'я, дату народження, фото) вводить
+            батько чи мати; вона залишається на їхньому пристрої й ніколи не збирається розробником. Застосунок не
+            орієнтований на дітей.
+        </p>
+
+        <h2>8. Покупки</h2>
+        <p>
+            Unwalked Plus купується та оплачується через Apple App Store. Застосунок не має доступу до платіжних даних;
+            статус підписки перевіряється на пристрої засобами Apple StoreKit.
+        </p>
+
+        <h2>9. Ваш контроль</h2>
+        <ul>
+            <li>Переглядайте, змінюйте й видаляйте будь-яку прогулянку, нотатку, фото чи улюблене місце в застосунку.</li>
+            <li>Профіль → Конфіденційність і дані: видалити всі прогулянки, профіль і фото дитини або все одразу.</li>
+            <li>Змінити чи відкликати доступ до геолокації можна будь-коли в Параметрах iOS → Unwalked.</li>
+        </ul>
+
+        <h2>10. Зміни</h2>
+        <p>Ми можемо оновлювати цю Політику. Актуальна версія завжди публікується на цій сторінці із зазначенням дати набрання чинності.</p>
+
+        <div class="footer">
+            Розробник: Віталій Карпенко · Контакт: <strong>karpenko.v80@gmail.com</strong>
+        </div>
+    </section>
+
+    <!-- ============ РУССКИЙ ============ -->
+    <section id="ru" hidden>
+        <h1>Политика конфиденциальности</h1>
+        <p class="meta"><strong>Unwalked</strong> (iOS) · Дата вступления в силу: 12 октября 2026 г.</p>
+
+        <p>
+            <strong>Unwalked</strong> помогает родителям планировать и записывать прогулки с ребёнком и вести
+            семейный дневник открытых мест. Эта Политика объясняет, какие данные использует приложение, где они
+            хранятся и кто их видит.
+        </p>
+
+        <div class="note">
+            Коротко: всё, что вы записываете в Unwalked, — прогулки, маршруты, заметки, фото и профиль ребёнка —
+            хранится <strong>только на вашем iPhone</strong>. У разработчика нет серверов, учётных записей и
+            аналитики, и он <strong>не получает никаких ваших данных</strong>.
+        </div>
+
+        <h2>1. Какие данные использует приложение</h2>
+        <ul>
+            <li><strong>Геолокация.</strong> Чтобы показать карту и построить маршрут от того места, где вы находитесь,
+                а во время начатой вами прогулки — чтобы записать пройденный путь.</li>
+            <li><strong>Прогулки.</strong> Время начала и окончания, длительность, расстояние, пройденный путь
+                (упрощённый), общие исследованные участки (квадраты около 25 м), названия улиц по пути, а также город,
+                район и страна прогулки.</li>
+            <li><strong>Дневник.</strong> Названия, заметки, отметки «особый момент», любимые места и фото, которые вы
+                добавляете.</li>
+            <li><strong>Профиль ребёнка (необязательно).</strong> Имя, дата рождения и фото ребёнка — только если вы их
+                укажете.</li>
+            <li><strong>Настройки.</strong> Тема, режим коляски и сохранение линий маршрутов.</li>
+        </ul>
+
+        <h2>2. Где хранятся данные</h2>
+        <ul>
+            <li>Все данные хранятся <strong>локально</strong> в защищённом хранилище приложения на вашем iPhone и
+                шифруются iOS, когда устройство заблокировано.</li>
+            <li>Они могут попадать в <strong>резервные копии iCloud или компьютера</strong> в соответствии с
+                настройками iOS. У разработчика нет к ним доступа.</li>
+            <li>Удаление приложения удаляет его данные с устройства.</li>
+        </ul>
+
+        <h2>3. Геолокация</h2>
+        <ul>
+            <li>Unwalked запрашивает доступ только <strong>«При использовании»</strong> и никогда не запрашивает «Всегда».</li>
+            <li>Пока записывается начатая вами прогулка, геолокация обновляется и при заблокированном экране или в
+                фоне. В это время iOS показывает <strong>синий индикатор геолокации</strong>. Запись прекращается,
+                когда вы завершаете или отменяете прогулку.</li>
+            <li>В Профиле можно выключить <strong>«Сохранять линии маршрутов»</strong>: тогда остаются только общие
+                квадраты ~25 м для раскрашивания карты, а сохранённые линии маршрутов удаляются.</li>
+        </ul>
+
+        <h2>4. Сервисы Apple</h2>
+        <p>
+            Карту, пешеходные маршруты, поиск парков и детских площадок, а также названия улиц и мест предоставляет
+            <strong>Apple Maps</strong>. Для этого устройство отправляет Apple соответствующие координаты. Эти запросы
+            обрабатывает Apple в соответствии с
+            <a href="https://www.apple.com/legal/privacy/" rel="noopener">Политикой конфиденциальности Apple</a>;
+            разработчик их не получает. Других сторонних сервисов Unwalked не использует.
+        </p>
+
+        <h2>5. Фото</h2>
+        <p>
+            Фото выбираются через системное окно выбора фото iOS, поэтому приложение видит только выбранные вами
+            снимки и не нуждается в доступе ко всей медиатеке. Каждое фото уменьшается и сохраняется в приложении
+            заново — при этом удаляются геоданные и другие метаданные, добавленные камерой.
+        </p>
+
+        <h2>6. Чего приложение НЕ делает</h2>
+        <ul>
+            <li>не создаёт учётных записей и не требует регистрации;</li>
+            <li>не использует аналитику, трекинг, рекламу и рекламные идентификаторы;</li>
+            <li>не имеет серверов разработчика — ничего не отправляется разработчику;</li>
+            <li>не продаёт и никому не передаёт данные.</li>
+        </ul>
+
+        <h2>7. Дети</h2>
+        <p>
+            Unwalked предназначен для родителей и опекунов. Информацию о ребёнке (имя, дату рождения, фото) вводит
+            родитель; она остаётся на его устройстве и никогда не собирается разработчиком. Приложение не
+            ориентировано на детей.
+        </p>
+
+        <h2>8. Покупки</h2>
+        <p>
+            Unwalked Plus покупается и оплачивается через Apple App Store. Приложение не имеет доступа к платёжным
+            данным; статус подписки проверяется на устройстве средствами Apple StoreKit.
+        </p>
+
+        <h2>9. Ваш контроль</h2>
+        <ul>
+            <li>Просматривайте, изменяйте и удаляйте любую прогулку, заметку, фото или любимое место в приложении.</li>
+            <li>Профиль → Конфиденциальность и данные: удалить все прогулки, профиль и фото ребёнка или всё сразу.</li>
+            <li>Изменить или отозвать доступ к геолокации можно в любой момент в Настройках iOS → Unwalked.</li>
+        </ul>
+
+        <h2>10. Изменения</h2>
+        <p>Мы можем обновлять эту Политику. Актуальная версия всегда публикуется на этой странице с датой вступления в силу.</p>
+
+        <div class="footer">
+            Разработчик: Виталий Карпенко · Контакт: <strong>karpenko.v80@gmail.com</strong>
+        </div>
+    </section>
+
+</div>
+
+<script>
+    function setLang(lang) {
+        ['en', 'uk', 'ru'].forEach(function (code) {
+            document.getElementById(code).hidden = code !== lang;
+            document.getElementById('btn-' + code).classList.toggle('active', code === lang);
+        });
+        document.documentElement.lang = lang;
+    }
+</script>
+</body>
+</html>
